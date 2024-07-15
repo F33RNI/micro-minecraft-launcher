@@ -201,10 +201,6 @@ def username_dialog() -> str or None:
     Returns:
         str or None: username or None if not provided
     """
-    logging.debug("Asking for username")
-
-    # Sleep a bit to make sure logs are flushed
-    time.sleep(0.1)
     print("\n" + "#" * 80 + "\n", flush=True)
     username = input("USERNAME: ").strip()
     print("\n" + "#" * 80 + "\n", flush=True)
@@ -287,7 +283,10 @@ def main():
 
             username = config_manager_.get("user")
             if not username:
+                logging.debug("Asking for username")
+                logging_handler_.flush()
                 username = username_dialog()
+
             auth_uuid = config_manager_.get("auth_uuid")
             auth_access_token = config_manager_.get("auth_access_token")
             user_type = config_manager_.get("user_type")

@@ -18,6 +18,9 @@ If not, see <http://www.gnu.org/licenses/>.
 import logging
 import logging.handlers
 import multiprocessing
+import queue
+import time
+from ctypes import c_bool
 
 # Logging formatter
 FORMATTER_FMT = "[%(asctime)s] [%(levelname)-.1s] %(message)s"
@@ -25,7 +28,7 @@ FORMATTER_FMT_SUFFIX = "[%(asctime)s] [%(levelname)-.1s] [{suffix}] %(message)s"
 FORMATTER_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
-def worker_configurer(queue: multiprocessing.Queue, suffix: str or None = None):
+def worker_configurer(queue_: multiprocessing.Queue, suffix: str or None = None):
     """Call this method in your process
 
     Args:
@@ -39,7 +42,7 @@ def worker_configurer(queue: multiprocessing.Queue, suffix: str or None = None):
             root_logger.removeHandler(handler)
 
     # Setup queue handler
-    queue_handler = logging.handlers.QueueHandler(queue)
+    queue_handler = logging.handlers.QueueHandler(queue_)
     root_logger.addHandler(queue_handler)
     root_logger.setLevel(logging.DEBUG)
 
@@ -63,18 +66,32 @@ class LoggingHandler:
         self._verbose = verbose
 
         self._queue = multiprocessing.Queue(-1)
+        self._flush_request = multiprocessing.Value(c_bool, False)
 
     @property
     def queue_(self) -> multiprocessing.Queue:
+        """
+        Returns:
+            multiprocessing.Queue: logging queue
+        """
         return self._queue
+
+    def flush(self) -> None:
+        """Requests handlers flush and waits until flushed"""
+        with self._flush_request.get_lock():
+            self._flush_request.value = True
+        while True:
+            with self._flush_request.get_lock():
+                flush_request = self._flush_request.value
+            if not flush_request:
+                break
+            time.sleep(0.01)
 
     def configure_and_start_listener(self):
         """Initializes logging and starts listening. Send None to queue to stop it"""
         # This import must be here
-        # pylint: disable=import-outside-toplevel
+        # pylint: disable-next=import-outside-toplevel
         import sys
-
-        # pylint: enable=import-outside-toplevel
 
         # Setup logging into console
         console_handler = logging.StreamHandler(sys.stdout)
@@ -88,8 +105,20 @@ class LoggingHandler:
         # Start queue listener
         while True:
             try:
-                # Get logging record
-                record = self._queue.get()
+                # Handle flush request
+                with self._flush_request.get_lock():
+                    if self._flush_request.value:
+                        logging.debug("Flushing logging handlers")
+                        for handler in root_logger.handlers:
+                            handler.flush()
+                    self._flush_request.value = False
+
+                # Get logging record (non-blocking)
+                try:
+                    record = self._queue.get(block=False)
+                except queue.Empty:
+                    time.sleep(0.1)
+                    continue
 
                 # Send None to exit
                 if record is None:
