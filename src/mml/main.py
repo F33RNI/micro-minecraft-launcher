@@ -16,12 +16,15 @@ If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+import json
 import logging
 import multiprocessing
 import shlex
 import sys
 import time
 from typing import Dict, List
+
+import requests
 
 from mml._version import __version__
 from mml.config_manager import CONFIG_DEFAULT, ConfigManager
@@ -41,6 +44,9 @@ EXAMPLE_USAGE = """examples:
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
 """
+
+# For update checking
+TIMEOUT = 30
 
 
 def parse_args() -> argparse.Namespace:
@@ -236,6 +242,32 @@ def key_value_pairs_to_dict(key_values: List[str] or None, separator: str = "=")
     return result
 
 
+def check_mml_version() -> None:
+    """Checks for latest tag on GitHub and prints it"""
+    logging.info("Checking for updates")
+    try:
+        response = requests.get("https://api.github.com/repos/F33RNI/micro-minecraft-launcher/tags", timeout=TIMEOUT)
+        if response.ok:
+            tags = json.loads(response.text)
+            if len(tags) != 0:
+                latest_lag = tags[0]["name"]
+                if latest_lag != __version__:
+                    new_version_str = f" New version available: {latest_lag} "
+                    decorator = "#" * ((80 - len(new_version_str)) // 2)
+                    new_version_str = decorator + new_version_str + decorator
+                    while len(new_version_str) < 80:
+                        new_version_str += "#"
+                    logging.warning(new_version_str)
+                    logging.warning("# Please download it from:                                                     #")
+                    logging.warning("# https://github.com/F33RNI/micro-minecraft-launcher/releases/latest           #")
+                    logging.warning("# ############################################################################ #")
+        else:
+            logging.error(f"Unable to check for updates: {response.status_code} - {response.text}")
+    except Exception as e:
+        logging.error(f"Unable to check for updates: {e}")
+        logging.debug("Error details", exc_info=e)
+
+
 def main():
     """Main entry"""
     # Multiprocessing fix for Windows
@@ -256,6 +288,9 @@ def main():
         # Log software version and GitHub link
         logging.info(f"micro-minecraft-launcher version: {__version__}")
         logging.info("https://github.com/F33RNI/micro-minecraft-launcher")
+
+        # Check for updates
+        check_mml_version()
 
         # Detect OS, check and log it
         os_name_ = os_name()
