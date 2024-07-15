@@ -21,8 +21,8 @@ import glob
 import os
 import platform
 
-import certifi
 import PyInstaller.config
+from PyInstaller.utils.hooks import collect_data_files
 
 # Set working path
 PyInstaller.config.CONF["workpath"] = "./build"
@@ -35,7 +35,8 @@ with open(os.path.join("src", "mml", "_version.py"), "r", encoding="utf-8") as f
 COMPILE_NAME = f"micro-minecraft-launcher-{version}-{platform.system()}-{platform.machine()}".lower()
 
 SOURCE_FILES = glob.glob(os.path.join("src", "mml", "*.py"))
-INCLUDE_FILES = [("LICENSE", "."), (os.path.abspath(certifi.where()), "certifi")]
+INCLUDE_FILES = [("LICENSE", ".")]
+INCLUDE_FILES.extend(collect_data_files("certifi"))
 ICON = None  # [os.path.join("icons", "icon.ico")]
 
 block_cipher = None

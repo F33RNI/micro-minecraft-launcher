@@ -21,6 +21,8 @@ jobs:
           - os: macos-12
 
     steps:
+    - uses: sudo apt-get install --reinstall ca-certificates
+    - uses: sudo update-ca-certificates
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
