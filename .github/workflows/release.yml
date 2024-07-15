@@ -1,0 +1,35 @@
+name: Build binary files for release
+
+on:
+  release:
+    types:
+      - 'created'
+      - 'edited'
+
+jobs:
+  build-main:
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: macos-12
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install --upgrade -r requirements.txt
+    - run: pip install pyinstaller
+    - run: pyinstaller main.spec
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/*
