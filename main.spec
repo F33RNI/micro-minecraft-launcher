@@ -1,4 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
+
+"""
+This file is part of the micro-minecraft-launcher distribution.
+See <https://github.com/F33RNI/micro-minecraft-launcher> for more info.
+
+Copyright (C) 2024 Fern Lane
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, version 3.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.
+If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import glob
 import os
 import platform
 
@@ -14,7 +33,7 @@ with open(os.path.join("src", "mml", "_version.py"), "r", encoding="utf-8") as f
 # Final name
 COMPILE_NAME = f"micro-minecraft-launcher-{version}-{platform.system()}-{platform.machine()}".lower()
 
-SOURCE_FILES = [os.path.join("src", "mml", "main.py")]
+SOURCE_FILES = glob.glob(os.path.join("src", "mml", "*.py"))
 INCLUDE_FILES = [("LICENSE", ".")]
 ICON = None  # [os.path.join("icons", "icon.ico")]
 
@@ -51,7 +70,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
