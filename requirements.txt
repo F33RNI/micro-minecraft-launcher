@@ -1,0 +1,3 @@
+install-jdk==1.1.0
+python-dateutil==2.9.0.post0
+requests==2.32.3

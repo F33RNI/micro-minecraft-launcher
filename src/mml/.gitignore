@@ -1,0 +1,5 @@
+__pycache__
+.venv
+venv
+jdk
+.micro-minecraft-launcher.json
