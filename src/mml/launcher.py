@@ -15,7 +15,6 @@ You should have received a copy of the GNU General Public License along with thi
 If not, see <http://www.gnu.org/licenses/>.
 """
 
-import fcntl
 import hashlib
 import logging
 import os
@@ -314,10 +313,13 @@ class Launcher(Thread):
             stopping_timer = 0
             level = logging.info
 
+            # Make readline() non-blocking
+            os.set_blocking(self._minecraft_process.stdout.fileno(), False)
+
             # Capture logs
             while self._minecraft_process.poll() is None:
                 # Read logs from STOUT
-                minecraft_stdout = self._non_block_readline()
+                minecraft_stdout = self._minecraft_process.stdout.readline()
                 if not minecraft_stdout:
                     time.sleep(0.1)
                     self._check_kill(stopping_timer)
@@ -379,20 +381,6 @@ class Launcher(Thread):
                 logging.debug("Error details", exc_info=e)
 
         logging.info("Launcher thread stopped")
-
-    def _non_block_readline(self) -> bytes or None:
-        """Reads line from minecraft's STOUT in non-blocking way
-
-        Returns:
-            bytes or None: encoded line or None if nothing to read
-        """
-        fd = self._minecraft_process.stdout.fileno()
-        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
-        try:
-            return self._minecraft_process.stdout.readline()
-        except:
-            return None
 
     def _check_kill(self, stopping_timer: float) -> None:
         """Checks if there is more then MINECRAFT_STOPPING_TIMEOUT after MINECRAFT_STOPPING_LOG and kills minecraft
