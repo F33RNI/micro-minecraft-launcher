@@ -204,7 +204,7 @@ class Downloader:
             self._stats_timer = time.time()
             progress = self.get_progress() * 100.0
             logging.info(
-                f"Downloaded {sizeof_fmt(self.bytes_downloaded)} / {sizeof_fmt(self.bytes_total)} ({progress:.2f}%)"
+                f"Processed {sizeof_fmt(self.bytes_downloaded)} / {sizeof_fmt(self.bytes_total)} ({progress:.2f}%)"
             )
 
     def _checker_loop(self) -> None:
