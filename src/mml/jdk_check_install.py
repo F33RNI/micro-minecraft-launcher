@@ -29,7 +29,7 @@ from mml.rules_check import os_name
 JDK_PATH = "jdk"
 
 # Relative to JDK_PATH
-JAVA_PATH = os.path.join("jdk*", "bin", "java")
+JAVA_PATH = os.path.join("jdk*", "bin", "java.exe" if os_name() == "windows" else "java")
 
 
 def classpath_separator() -> str:
