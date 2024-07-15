@@ -21,8 +21,8 @@ import logging
 import multiprocessing
 import threading
 import time
-from artifact import Artifact
 
+from mml.artifact import Artifact
 from mml.downloader_process import downloader_process
 
 # To prevent overloading and smooth queue handling
