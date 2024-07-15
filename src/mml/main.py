@@ -19,11 +19,13 @@ import argparse
 import json
 import logging
 import multiprocessing
+import os
 import shlex
 import sys
 import time
 from typing import Dict, List
 
+import certifi
 import requests
 
 from mml._version import __version__
@@ -282,6 +284,13 @@ def main():
     logging_handler_process = multiprocessing.Process(target=logging_handler_.configure_and_start_listener)
     logging_handler_process.start()
     worker_configurer(logging_handler_.queue_)
+
+    # Fix SSL: CERTIFICATE_VERIFY_FAILED
+    cert_file = certifi.where()
+    logging.debug(f"SSL certificate file: {cert_file}. Exists? {os.path.exists(cert_file)}")
+    os.environ["SSL_CERT_DIR"] = os.path.dirname(cert_file)
+    os.environ["SSL_CERT_FILE"] = cert_file
+    os.environ["REQUESTS_CA_BUNDLE"] = cert_file
 
     downloader_ = None
     try:

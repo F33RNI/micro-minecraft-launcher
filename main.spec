@@ -20,7 +20,6 @@ If not, see <http://www.gnu.org/licenses/>.
 import glob
 import os
 import platform
-import sys
 
 import PyInstaller.config
 from PyInstaller.utils.hooks import collect_data_files
@@ -40,12 +39,7 @@ INCLUDE_FILES = [("LICENSE", ".")]
 ICON = None  # [os.path.join("icons", "icon.ico")]
 
 # Fix SSL: CERTIFICATE_VERIFY_FAILED
-if getattr(sys, "frozen", None):  # keyword 'frozen' is for setting basedir while in onefile mode in pyinstaller
-    os.environ["REQUESTS_CA_BUNDLE"] = os.path.join(sys._MEIPASS, "requests", "cacert.pem")
-else:
-    os.environ["REQUESTS_CA_BUNDLE"] = os.path.join("requests", "cacert.pem")
 INCLUDE_FILES.extend(collect_data_files("certifi"))
-print("REQUESTS_CA_BUNDLE:", os.environ["REQUESTS_CA_BUNDLE"])
 
 block_cipher = None
 
