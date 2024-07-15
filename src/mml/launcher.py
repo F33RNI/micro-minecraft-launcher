@@ -18,8 +18,10 @@ If not, see <http://www.gnu.org/licenses/>.
 import hashlib
 import logging
 import os
+import queue
 import re
 import subprocess
+import sys
 import time
 from enum import IntEnum
 from functools import reduce
@@ -44,6 +46,8 @@ LOG_CONFIG_LAYOUT = '<PatternLayout pattern="[%t/%level]: %msg{nolookups}%n" />'
 # How long to wait for minecraft process to stops by itself after MINECRAFT_STOPPING_LOG before killing it
 MINECRAFT_STOPPING_LOG = "(\\[Render thread\\/INFO\\]\\: Stopping\\!|\\!\\[CDATA\\[Stopping\\!\\]\\])"
 MINECRAFT_STOPPING_TIMEOUT = 3.0
+
+ON_POSIX = "posix" in sys.builtin_module_names
 
 
 class State(IntEnum):
@@ -304,23 +308,27 @@ class Launcher(Thread):
             self._state = State.MINECRAFT
             self._minecraft_process = subprocess.Popen(
                 final_cmd,
+                bufsize=1,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                close_fds=ON_POSIX,
                 shell=False,
                 cwd=cwd,
             )
 
+            stdout_queue = queue.Queue()
+            stdout_thread = Thread(target=self._enqueue_output, args=(stdout_queue,), daemon=True)
+            stdout_thread.start()
+
             stopping_timer = 0
             level = logging.info
 
-            # Make readline() non-blocking
-            os.set_blocking(self._minecraft_process.stdout.fileno(), False)
-
             # Capture logs
             while self._minecraft_process.poll() is None:
-                # Read logs from STOUT
-                minecraft_stdout = self._minecraft_process.stdout.readline()
-                if not minecraft_stdout:
+                # Read logs from STOUT (non-blocking way)
+                try:
+                    minecraft_stdout = stdout_queue.get(block=False)
+                except queue.Empty:
                     time.sleep(0.1)
                     self._check_kill(stopping_timer)
                     continue
@@ -381,6 +389,14 @@ class Launcher(Thread):
                 logging.debug("Error details", exc_info=e)
 
         logging.info("Launcher thread stopped")
+
+    def _enqueue_output(self, queue_: queue.Queue) -> None:
+        """Handler for reading lines from minecraft's STDOUT and putting them into queue_"""
+        logging.debug("_enqueue_output() started")
+        for line in iter(self._minecraft_process.stdout.readline, b""):
+            queue_.put(line)
+        self._minecraft_process.stdout.close()
+        logging.debug("_enqueue_output() finished")
 
     def _check_kill(self, stopping_timer: float) -> None:
         """Checks if there is more then MINECRAFT_STOPPING_TIMEOUT after MINECRAFT_STOPPING_LOG and kills minecraft
