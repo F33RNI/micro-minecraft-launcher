@@ -29,7 +29,7 @@ from mml.artifact import Artifact
 CHUNK_SIZE = 8192
 
 # Requests timeout
-TIMEOUT = 120
+TIMEOUT = 240
 
 # How many download attempts are allowed (1 - no retries)
 DOWNLOAD_ATTEMPTS = 3
@@ -77,12 +77,12 @@ def download_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
     try:
         response = requests.get(artifact_.url, timeout=TIMEOUT, stream=True)
         if response.ok:
-            with open(artifact_path, "wb") as f:
+            with open(artifact_path, "wb") as artifact_io:
                 for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
                     if chunk:
-                        f.write(chunk)
-                        f.flush()
-                        os.fsync(f.fileno())
+                        artifact_io.write(chunk)
+                artifact_io.flush()
+                os.fsync(artifact_io.fileno())
         else:
             logging.error(f"Unable to download artifact: {response.status_code} - {response.text}")
     except Exception as e:
