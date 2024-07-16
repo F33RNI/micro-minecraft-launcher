@@ -15,6 +15,7 @@ You should have received a copy of the GNU General Public License along with thi
 If not, see <http://www.gnu.org/licenses/>.
 """
 
+import logging
 import platform
 import re
 import sys
@@ -65,8 +66,12 @@ def rules_check(rules: List[Dict], features: Dict or None = None) -> bool:
         }
 
     Returns:
-        bool: True if "allow", False if "disallow"
+        bool: True if "allow", False if "disallow". True if no rules provided
     """
+    if not rules or len(rules) == 0:
+        logging.debug("Empty rules")
+        return True
+
     if features is None:
         features = {}
 
