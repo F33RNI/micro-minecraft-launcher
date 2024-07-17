@@ -356,6 +356,89 @@ def write_profiles(game_dir: str, versions: List[Dict]) -> None:
         json.dump(launcher_profiles, launcher_profiles_io, ensure_ascii=False, indent=4)
 
 
+def install_forge(forge_path: str, game_dir: str) -> bool:
+    """Installs forge
+
+    Args:
+        forge_path (str): path to forge installer (.jar)
+        game_dir (str): path to .minecraft (where to install forge)
+
+    Raises:
+        Exception: java error or interrupted
+
+    Returns:
+        bool: if installer process finished without interrupting
+    """
+    if not os.path.exists(forge_path):
+        logging.warning(f"Skipping forge installation. Path {forge_path} doesn't exist")
+        return False
+
+    forge_java = jdk_check_install(version=17)
+    if not forge_java:
+        raise Exception("Unable to install Java for installing Forge")
+
+    installer_cmd = [forge_java, "-jar", forge_path, "--installClient", game_dir]
+    logging.info(f"Installing forge using command: {' '.join(installer_cmd)}")
+    installer_process = subprocess.Popen(
+        installer_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=False,
+        cwd=game_dir,
+    )
+
+    # Redirect logs and capture CTRL+C
+    try:
+        while installer_process.poll() is None:
+            # Read logs from STOUT (blocking)
+            installer_stdout = installer_process.stdout.readline()
+            if not installer_stdout:
+                continue
+
+            # Redirect log
+            log_line = installer_stdout.decode("utf-8", errors="replace").strip()
+            logging.info(f"[Forge installer] {log_line}")
+
+    except (SystemExit, KeyboardInterrupt) as e:
+        logging.warning("Interrupted! Killing forge installer")
+        if installer_process.poll() is None:
+            try:
+                installer_process.kill()
+            except Exception as e_:
+                logging.warning(f"Unable to kill forge installer process: {e_}")
+                logging.debug("Error details", exc_info=e_)
+
+        # Re-raise interrupt
+        raise e
+
+    # Installer stopped
+    logging.info("Forge installer process stopped")
+    return True
+
+
+def delete_files(delete_patterns: List[str]) -> None:
+    """Deletes files using glob patterns
+
+    Args:
+        delete_patterns (List[str]): patterns for glob.glob
+    """
+    logging.debug(f"delete_patterns: {' '.join(delete_patterns)}")
+    for delete_pattern in delete_patterns:
+        for file in glob.glob(delete_pattern):
+            logging.debug(f"Found file {file} in pattern {delete_pattern} to delete")
+            logging.warning(f"Deleting {file}")
+            try:
+                if os.path.isdir(file):
+                    shutil.rmtree(file, ignore_errors=True)
+                    if os.path.exists(file):
+                        os.rmdir(file)
+                else:
+                    os.remove(file)
+            except Exception as e:
+                logging.error(f"Error deleting {file}: {e}")
+                logging.debug("Error details", exc_info=e)
+
+
 def main():
     """Main entry"""
     # Multiprocessing fix for Windows
@@ -412,59 +495,17 @@ def main():
         # Install forge client
         forge_path = config_manager_.get("install_forge")
         if forge_path:
-            if not os.path.exists(forge_path):
-                logging.warning(f"Skipping forge installation. Path {forge_path} doesn't exist")
-
-            forge_java = jdk_check_install(version=17)
-            if not forge_java:
-                raise Exception("Unable to install Java for installing Forge")
-
-            installer_cmd = [forge_java, "-jar", forge_path, "--installClient", game_dir]
-            logging.info(f"Installing forge using command: {' '.join(installer_cmd)}")
-            installer_process = subprocess.Popen(
-                installer_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                shell=False,
-                cwd=game_dir,
-            )
-
-            # Capture logs
-            while installer_process.poll() is None:
-                # Read logs from STOUT (blocking)
-                installer_stdout = installer_process.stdout.readline()
-                if not installer_stdout:
-                    continue
-
-                # Redirect log
-                log_line = installer_stdout.decode("utf-8", errors="replace").strip()
-                logging.info(f"[Forge installer] {log_line}")
-
-            # Installer stopped
-            logging.info("Forge installer process stopped")
-
-        # Update profiles
-        versions = profile_parser_.parse_versions()
-        if args.write_profiles or config_manager_.get("write_profiles"):
-            write_profiles(game_dir, versions)
+            if install_forge(forge_path, game_dir):
+                # Update profiles
+                versions = profile_parser_.parse_versions()
+                if args.write_profiles or config_manager_.get("write_profiles"):
+                    write_profiles(game_dir, versions)
 
         # Delete files before launching
-        delete_files = config_manager_.get("delete_files", [])
+        delete_patterns = config_manager_.get("delete_files", [])
         if args.delete_files:
-            delete_files.extend(args.delete_files)
-        for delete_pattern in delete_files:
-            for file in glob.glob(delete_pattern):
-                logging.warning(f"Deleting {file}")
-                try:
-                    if os.path.isdir(file):
-                        shutil.rmtree(file, ignore_errors=True)
-                        if os.path.exists(file):
-                            os.rmdir(file)
-                    else:
-                        os.remove(file)
-                except Exception as e:
-                    logging.error(f"Error deleting {file}: {e}")
-                    logging.debug("Error details", exc_info=e)
+            delete_patterns.extend(args.delete_files)
+        delete_files(delete_patterns)
 
         # Check if have anything to launch
         version_id = config_manager_.get("id")
