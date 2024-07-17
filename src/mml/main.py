@@ -16,11 +16,14 @@ If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+import glob
 import json
 import logging
 import multiprocessing
 import os
 import shlex
+import shutil
+import subprocess
 import sys
 import time
 from typing import Dict, List
@@ -32,6 +35,7 @@ import requests
 from mml._version import __version__
 from mml.config_manager import CONFIG_DEFAULT, ConfigManager
 from mml.file_resolver import FileResolver
+from mml.jdk_check_install import jdk_check_install
 from mml.launcher import Launcher, State
 from mml.logging_handler import LoggingHandler, worker_configurer
 from mml.profile_parser import ProfileParser
@@ -47,6 +51,7 @@ EXAMPLE_USAGE = """examples:
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
   micro-minecraft-launcher --write-profiles
+  micro-minecraft-launcher --write-profiles --install-forge forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
 """
 
 LAUNCHER_PROFILES_FILE = "launcher_profiles.json"
@@ -185,6 +190,26 @@ def parse_args() -> argparse.Namespace:
         help="write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge)",
     )
     parser.add_argument(
+        "--install-forge",
+        type=str,
+        required=False,
+        default=None,
+        help="run specified path to forge installer (.jar file) with --installClient game_dir"
+        " NOTE: Consider adding --write-profiles argument"
+        " NOTE: Consider adding --delete-files forge*installer.jar argument"
+        " NOTE: Will download JRE / JDK 17",
+    )
+    parser.add_argument(
+        "--delete-files",
+        nargs="+",
+        required=False,
+        help="delete files before launching minecraft. Uses glob to find files"
+        ' (Ex.: --delete-files "forge*installer.jar" "hs_err_pid*.log")'
+        " NOTE: Consider adding --write-profiles argument"
+        " NOTE: Consider adding --delete-forge-installer argument"
+        " NOTE: Will download JRE / JDK 17",
+    )
+    parser.add_argument(
         "id",
         nargs="?",
         default=None,
@@ -284,6 +309,53 @@ def check_mml_version() -> None:
         logging.debug("Error details", exc_info=e)
 
 
+def write_profiles(game_dir: str, versions: List[Dict]) -> None:
+    """Writes local version into LAUNCHER_PROFILES_FILE
+
+    Args:
+        game_dir (str): path to .minecraft
+        versions (List[Dict]): result of ProfileParser.parse_versions()
+    """
+    launcher_profiles_file_path = os.path.join(game_dir, LAUNCHER_PROFILES_FILE)
+    launcher_profiles = {}
+    if os.path.exists(launcher_profiles_file_path):
+        logging.info(f"Found existing {launcher_profiles_file_path} file. Reading it")
+        with open(launcher_profiles_file_path, "r", encoding="utf-8") as launcher_profiles_io:
+            launcher_profiles = json.load(launcher_profiles_io)
+
+    profiles = launcher_profiles.get("profiles", {})
+    for version in versions:
+        if not version.get("local"):
+            continue
+
+        version_exists = False
+        for _, profile in profiles.items():
+            if profile.get("lastVersionId") == version["id"]:
+                version_exists = True
+                break
+        if version_exists:
+            logging.debug(f"Not adding {version['id']} to {LAUNCHER_PROFILES_FILE}. Already exists")
+            continue
+
+        logging.debug(f"Adding {version['id']} to {LAUNCHER_PROFILES_FILE}")
+        profiles[uuid4().hex] = {
+            "lastVersionId": version["id"],
+            "name": version["id"],
+            "type": "custom",
+            "icon": LAUNCHER_PROFILES_ICON_DEFAULT,
+            "created": version["releaseTime"],
+            "lastUsed": version["releaseTime"],
+        }
+
+    launcher_profiles["profiles"] = profiles
+    launcher_profiles["version"] = launcher_profiles.get("launcher_profiles", 3)
+    logging.debug(f"Launcher profiles to write {launcher_profiles}")
+
+    logging.info(f"Writing launcher profiles into {launcher_profiles_file_path}")
+    with open(launcher_profiles_file_path, "w+", encoding="utf-8") as launcher_profiles_io:
+        json.dump(launcher_profiles, launcher_profiles_io, ensure_ascii=False, indent=4)
+
+
 def main():
     """Main entry"""
     # Multiprocessing fix for Windows
@@ -335,44 +407,61 @@ def main():
 
         # Save found local versions
         if config_manager_.get("write_profiles"):
-            launcher_profiles_file_path = os.path.join(game_dir, LAUNCHER_PROFILES_FILE)
-            launcher_profiles = {}
-            if os.path.exists(launcher_profiles_file_path):
-                logging.info(f"Found existing {launcher_profiles_file_path} file. Reading it")
-                with open(launcher_profiles_file_path, "r", encoding="utf-8") as launcher_profiles_io:
-                    launcher_profiles = json.load(launcher_profiles_io)
+            write_profiles(game_dir, versions)
 
-            profiles = launcher_profiles.get("profiles", {})
-            for version in versions:
-                if not version.get("local"):
+        # Install forge client
+        forge_path = config_manager_.get("install_forge")
+        if forge_path:
+            if not os.path.exists(forge_path):
+                raise Exception(f"Unable to install Forge. Path {forge_path} doesn't exist")
+
+            forge_java = jdk_check_install(version=17)
+            if not forge_java:
+                raise Exception("Unable to install Java for installing Forge")
+
+            installer_cmd = [forge_java, "-jar", forge_path, "--installClient", game_dir]
+            logging.info(f"Installing forge using command: {' '.join(installer_cmd)}")
+            installer_process = subprocess.Popen(
+                installer_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                shell=False,
+                cwd=game_dir,
+            )
+
+            # Capture logs
+            while installer_process.poll() is None:
+                # Read logs from STOUT (blocking)
+                installer_stdout = installer_process.stdout.readline()
+                if not installer_stdout:
                     continue
 
-                version_exists = False
-                for _, profile in profiles.items():
-                    if profile.get("lastVersionId") == version["id"]:
-                        version_exists = True
-                        break
-                if version_exists:
-                    logging.debug(f"Not adding {version['id']} to {LAUNCHER_PROFILES_FILE}. Already exists")
-                    continue
+                # Redirect log
+                log_line = installer_stdout.decode("utf-8", errors="replace").strip()
+                logging.info(f"[Forge installer] {log_line}")
 
-                logging.debug(f"Adding {version['id']} to {LAUNCHER_PROFILES_FILE}")
-                profiles[uuid4().hex] = {
-                    "lastVersionId": version["id"],
-                    "name": version["id"],
-                    "type": "custom",
-                    "icon": LAUNCHER_PROFILES_ICON_DEFAULT,
-                    "created": version["releaseTime"],
-                    "lastUsed": version["releaseTime"],
-                }
+            # Installer stopped
+            logging.info("Forge installer process stopped")
 
-            launcher_profiles["profiles"] = profiles
-            launcher_profiles["version"] = launcher_profiles.get("launcher_profiles", 3)
-            logging.debug(f"Launcher profiles to write {launcher_profiles}")
+        # Update profiles
+        versions = profile_parser_.parse_versions()
+        if config_manager_.get("write_profiles"):
+            write_profiles(game_dir, versions)
 
-            logging.info(f"Writing launcher profiles into {launcher_profiles_file_path}")
-            with open(launcher_profiles_file_path, "w+", encoding="utf-8") as launcher_profiles_io:
-                json.dump(launcher_profiles, launcher_profiles_io, ensure_ascii=False, indent=4)
+        # Delete files before launching
+        for delete_pattern in config_manager_.get("delete_files", []):
+            for file in glob.glob(delete_pattern):
+                logging.warning(f"Deleting {file}")
+                try:
+                    if os.path.isdir(file):
+                        shutil.rmtree(file, ignore_errors=True)
+                        if os.path.exists(file):
+                            os.rmdir(file)
+                    else:
+                        os.remove(file)
+                except Exception as e:
+                    logging.error(f"Error deleting {file}: {e}")
+                    logging.debug("Error details", exc_info=e)
 
         # Check if have anything to launch
         version_id = config_manager_.get("id")
