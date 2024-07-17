@@ -249,7 +249,7 @@ class Launcher(Thread):
 
             # Set uuid
             if self._auth_uuid:
-                env_variables_["auth_uuid"] = "9b356c9a-aeec-44f9-b67a-a9c519bd6640"  # self._auth_uuid
+                env_variables_["auth_uuid"] = self._auth_uuid
 
             # Overwrite env variables with custom ones
             if self._env_variables:
@@ -301,6 +301,12 @@ class Launcher(Thread):
                     # Replace
                     final_cmd[i] = final_cmd[i].replace(placeholder, env_value)
 
+            # Clone environ and replace
+            environ_copy = os.environ.copy()
+            for var_name, var_value in env_variables_.items():
+                environ_copy[var_name] = var_value
+            logging.debug(f"Environment: {environ_copy}")
+
             # Log final command
             logging.info(f"Full command: {' '.join(final_cmd)}")
 
@@ -314,6 +320,7 @@ class Launcher(Thread):
                 close_fds=ON_POSIX,
                 shell=False,
                 cwd=cwd,
+                env=environ_copy,
             )
 
             stdout_queue = queue.Queue()
