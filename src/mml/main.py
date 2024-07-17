@@ -210,6 +210,9 @@ def username_dialog() -> str or None:
     Returns:
         str or None: username or None if not provided
     """
+    # Sleep a bit to make sure logs are flushed
+    time.sleep(0.1)
+
     print("\n" + "#" * 80 + "\n", flush=True)
     username = input("USERNAME: ").strip()
     print("\n" + "#" * 80 + "\n", flush=True)
