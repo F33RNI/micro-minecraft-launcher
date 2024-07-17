@@ -406,7 +406,7 @@ def main():
             return
 
         # Save found local versions
-        if config_manager_.get("write_profiles"):
+        if args.write_profiles or config_manager_.get("write_profiles", ignore_args=True):
             write_profiles(game_dir, versions)
 
         # Install forge client
@@ -445,7 +445,7 @@ def main():
 
         # Update profiles
         versions = profile_parser_.parse_versions()
-        if config_manager_.get("write_profiles"):
+        if args.write_profiles or config_manager_.get("write_profiles"):
             write_profiles(game_dir, versions)
 
         # Delete files before launching
