@@ -449,7 +449,10 @@ def main():
             write_profiles(game_dir, versions)
 
         # Delete files before launching
-        for delete_pattern in config_manager_.get("delete_files", []):
+        delete_files = config_manager_.get("delete_files", [])
+        if args.delete_files:
+            delete_files.extend(args.delete_files)
+        for delete_pattern in delete_files:
             for file in glob.glob(delete_pattern):
                 logging.warning(f"Deleting {file}")
                 try:
