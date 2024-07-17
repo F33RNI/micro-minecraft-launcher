@@ -44,11 +44,12 @@
 ### 📄 CLI usage
 
 ```text
-usage: micro-minecraft-launcher-1.0.dev0-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
+usage: micro-minecraft-launcher-1.1.dev7-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
                                                       [--auth-access-token AUTH_ACCESS_TOKEN] [--user-type USER_TYPE] [-i]
                                                       [--java-path JAVA_PATH] [-e KEY=VALUE [KEY=VALUE ...]] [-j JVM_ARGS]
-                                                      [-g GAME_ARGS] [--downloader-processes DOWNLOADER_PROCESSES] [--verbose]
-                                                      [--version]
+                                                      [-g GAME_ARGS] [--resolver-processes RESOLVER_PROCESSES] [--write-profiles]
+                                                      [--install-forge INSTALL_FORGE]
+                                                      [--delete-files DELETE_FILES [DELETE_FILES ...]] [--verbose] [--version]
                                                       [id]
 
 Simple cross-platform cli launcher for Minecraft
@@ -86,9 +87,19 @@ options:
   -g GAME_ARGS, --game-args GAME_ARGS
                         extra arguments for Minecraft separated with spaces (Ex.: -g="--server 192.168.0.1 --port 25565") NOTE: You
                         should define it with double quotes as in example NOTE: If an argument contains spaces, you should define it
-                        with double quotes: -g '-foo "multiple words"' NOTE: Will append to the bottom of "game_args" from config file
-  --downloader-processes DOWNLOADER_PROCESSES
-                        number of processes to download files (Default: 4)
+                        with double quotes: -g '-foo "multiple words"' NOTE: Will append to the bottom of "game_args" from config
+                        file
+  --resolver-processes RESOLVER_PROCESSES
+                        number of processes to resolve (download, copy and unpack) files(Default: 4)
+  --write-profiles      write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge)
+  --install-forge INSTALL_FORGE
+                        run specified path to forge installer (.jar file) with --installClient game_dir NOTE: Consider adding
+                        --write-profiles argument NOTE: Consider adding --delete-files forge*installer.jar argument NOTE: Will
+                        download JRE / JDK 17
+  --delete-files DELETE_FILES [DELETE_FILES ...]
+                        delete files before launching minecraft. Uses glob to find files (Ex.: --delete-files "forge*installer.jar"
+                        "hs_err_pid*.log") NOTE: Consider adding --write-profiles argument NOTE: Consider adding --delete-forge-
+                        installer argument NOTE: Will download JRE / JDK 17
   --verbose             debug logs
   --version             show launcher's version number and exit
 
@@ -99,6 +110,8 @@ examples:
   micro-minecraft-launcher --config /path/to/custom/micro-minecraft-launcher.json
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
+  micro-minecraft-launcher --write-profiles
+  micro-minecraft-launcher --write-profiles --install-forge forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
 ```
 
 > ⚠️ NOTE: CLI arguments will overwrite config
@@ -135,13 +148,17 @@ examples:
   }
   "jvm_args": [
     "-Xss1M",
-    "-Xmx6G",
+    "-Xmx4G",
     "-XX:+UnlockExperimentalVMOptions",
     "-XX:+UseG1GC",
     "-XX:G1NewSizePercent=20",
     "-XX:G1ReservePercent=20",
     "-XX:MaxGCPauseMillis=50",
-    "-XX:G1HeapRegionSize=32M"
+    "-XX:G1HeapRegionSize=32M",
+    "-Dfml.ignoreInvalidMinecraftCertificates=true",
+    "-Dfml.ignorePatchDiscrepancies=true",
+    "-Djava.net.preferIPv4Stack=true",
+    "-Dminecraft.applet.TargetDirectory=."
   ],
   "game_args": [
     "--server",
@@ -151,11 +168,52 @@ examples:
     "--height",
     "530"
   ],
-  "downloader_processes": 4 (number of processes to download files)
+  "resolver_processes": 4 (number of processes to download / copy / unpack files),
+  "write_profiles": true (write all found local versions into game_dir/launcher_profiles.json),
+  "install_forge": "path/to/forge-...-installer.jar",
+  "delete_files": [
+      "any file patterns to delete (for glob)",
+      ...
+  ]
 }
 ```
 
-> NOTE: You can ommit any config key. None of them are required
+> NOTE: You can omit any config key. None of them are required
+
+#### Example config file
+
+```json
+{
+    "game_dir": ".",
+    "id": "1.18.2-forge-40.2.4",
+    "jvm_args": [
+        "-Xss1M",
+        "-Xmx4G",
+        "-XX:+UnlockExperimentalVMOptions",
+        "-XX:+UseG1GC",
+        "-XX:G1NewSizePercent=20",
+        "-XX:G1ReservePercent=20",
+        "-XX:MaxGCPauseMillis=50",
+        "-XX:G1HeapRegionSize=32M",
+        "-Dfml.ignoreInvalidMinecraftCertificates=true",
+        "-Dfml.ignorePatchDiscrepancies=true",
+        "-Djava.net.preferIPv4Stack=true",
+        "-Dminecraft.applet.TargetDirectory=."
+    ],
+    "game_args": [
+        "--width",
+        "925",
+        "--height",
+        "530"
+    ],
+    "write_profiles": true,
+    "install_forge": "forge-1.18.2-40.2.4-installer.jar",
+    "delete_files": [
+        "forge-1.18.2-40.2.4-installer*",
+        "hs_err_pid*.log"
+    ]
+}
+```
 
 ----------
 
