@@ -413,7 +413,7 @@ def main():
         forge_path = config_manager_.get("install_forge")
         if forge_path:
             if not os.path.exists(forge_path):
-                raise Exception(f"Unable to install Forge. Path {forge_path} doesn't exist")
+                logging.warning(f"Skipping forge installation. Path {forge_path} doesn't exist")
 
             forge_java = jdk_check_install(version=17)
             if not forge_java:
