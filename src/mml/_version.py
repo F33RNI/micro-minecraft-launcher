@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License along with thi
 If not, see <http://www.gnu.org/licenses/>.
 """
 
-__version__ = "1.1.dev1"
+__version__ = "1.1.dev2"
 
 # For comparing with "minimumLauncherVersion"
 LAUNCHER_VERSION = 21
