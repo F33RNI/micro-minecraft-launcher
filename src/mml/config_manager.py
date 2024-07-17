@@ -41,7 +41,7 @@ def get_default_game_dir(os_name_: str) -> str:
         os.path.join(os.path.expanduser("~"), "Library", "Application Support", ".minecraft")
 
 
-CONFIG_DEFAULT = {"game_dir": get_default_game_dir(os_name()), "downloader_processes": 4}
+CONFIG_DEFAULT = {"game_dir": get_default_game_dir(os_name()), "resolver_processes": 4}
 
 
 class ConfigManager:
