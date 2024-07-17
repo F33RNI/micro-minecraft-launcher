@@ -24,6 +24,7 @@ import shlex
 import sys
 import time
 from typing import Dict, List
+from uuid import uuid4
 
 import certifi
 import requests
@@ -45,7 +46,11 @@ EXAMPLE_USAGE = """examples:
   micro-minecraft-launcher --config /path/to/custom/micro-minecraft-launcher.json
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
+  micro-minecraft-launcher --write-profiles
 """
+
+LAUNCHER_PROFILES_FILE = "launcher_profiles.json"
+LAUNCHER_PROFILES_ICON_DEFAULT = "Grass"
 
 # For update checking
 TIMEOUT = 30
@@ -174,6 +179,12 @@ def parse_args() -> argparse.Namespace:
         f"(Default: {CONFIG_DEFAULT['resolver_processes']})",
     )
     parser.add_argument(
+        "--write-profiles",
+        action="store_true",
+        default=False,
+        help="write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge)",
+    )
+    parser.add_argument(
         "id",
         nargs="?",
         default=None,
@@ -191,13 +202,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_versions(profile_parser_: ProfileParser) -> None:
+def print_versions(versions: List[Dict]) -> None:
     """Prints local and Mojang versions to console
 
     Args:
-        profile_parser_ (ProfileParser): ProfileParser instance
+        versions (List[Dict]): result of ProfileParser.parse_versions()
     """
-    versions = profile_parser_.parse_versions()
     versions_log = []
     for version in versions:
         versions_log.append(version["id"] + ("*" if version.get("local") else ""))
@@ -315,12 +325,54 @@ def main():
         game_dir = config_manager_.get("game_dir")
         logging.info(f"Game directory: {game_dir}")
         profile_parser_ = ProfileParser(game_dir)
+        versions = profile_parser_.parse_versions()
 
         # Print available versions and exit
         if args.list_versions:
-            print_versions(profile_parser_)
+            print_versions(versions)
             logging_handler_.queue_.put(None)
             return
+
+        # Save found local versions
+        if config_manager_.get("write_profiles"):
+            launcher_profiles_file_path = os.path.join(game_dir, LAUNCHER_PROFILES_FILE)
+            launcher_profiles = {}
+            if os.path.exists(launcher_profiles_file_path):
+                logging.info(f"Found existing {launcher_profiles_file_path} file. Reading it")
+                with open(launcher_profiles_file_path, "r", encoding="utf-8") as launcher_profiles_io:
+                    launcher_profiles = json.load(launcher_profiles_io)
+
+            profiles = launcher_profiles.get("profiles", {})
+            for version in versions:
+                if not version.get("local"):
+                    continue
+
+                version_exists = False
+                for _, profile in profiles.items():
+                    if profile.get("lastVersionId") == version["id"]:
+                        version_exists = True
+                        break
+                if version_exists:
+                    logging.debug(f"Not adding {version['id']} to {LAUNCHER_PROFILES_FILE}. Already exists")
+                    continue
+
+                logging.debug(f"Adding {version['id']} to {LAUNCHER_PROFILES_FILE}")
+                profiles[uuid4().hex] = {
+                    "lastVersionId": version["id"],
+                    "name": version["id"],
+                    "type": "custom",
+                    "icon": LAUNCHER_PROFILES_ICON_DEFAULT,
+                    "created": version["releaseTime"],
+                    "lastUsed": version["releaseTime"],
+                }
+
+            launcher_profiles["profiles"] = profiles
+            launcher_profiles["version"] = launcher_profiles.get("launcher_profiles", 3)
+            logging.debug(f"Launcher profiles to write {launcher_profiles}")
+
+            logging.info(f"Writing launcher profiles into {launcher_profiles_file_path}")
+            with open(launcher_profiles_file_path, "w+", encoding="utf-8") as launcher_profiles_io:
+                json.dump(launcher_profiles, launcher_profiles_io, ensure_ascii=False, indent=4)
 
         # Check if have anything to launch
         version_id = config_manager_.get("id")

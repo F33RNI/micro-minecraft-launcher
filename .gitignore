@@ -5,3 +5,4 @@ build
 dist
 jdk
 .micro-minecraft-launcher.json
+launcher_profiles.json
