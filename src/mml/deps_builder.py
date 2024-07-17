@@ -21,8 +21,8 @@ import os
 from typing import Callable, Dict, List, Tuple
 
 from mml.artifact import Artifact
-from mml.download_artifact import download_artifact
 from mml.jdk_check_install import jdk_check_install
+from mml.resolve_artifact import resolve_artifact
 from mml.rules_check import os_name, rules_check
 
 # Relative to game_dir
@@ -123,7 +123,7 @@ class DepsBuilder:
 
         # Check and try to download
         if "downloads" in self._version_json and "client" in self._version_json["downloads"]:
-            if not download_artifact(
+            if not resolve_artifact(
                 Artifact(
                     self._version_json["downloads"]["client"],
                     parent_dir=os.path.join(self._version_dir, self._version_id),
@@ -154,7 +154,7 @@ class DepsBuilder:
             return None
 
         # Download asset index
-        asset_index_path = download_artifact(
+        asset_index_path = resolve_artifact(
             Artifact(
                 self._version_json["assetIndex"],
                 parent_dir=os.path.join(self._game_dir, ASSET_INDEXES_DIR),
@@ -262,7 +262,7 @@ class DepsBuilder:
             parent_dir=os.path.join(self._game_dir, LOG_CONFIGS_DIR),
             target_file=logging_client["file"]["id"],
         )
-        log_config_path = download_artifact(logging_artifact)
+        log_config_path = resolve_artifact(logging_artifact)
         if not log_config_path:
             return None, None
 

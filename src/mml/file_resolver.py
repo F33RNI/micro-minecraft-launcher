@@ -23,7 +23,7 @@ import threading
 import time
 
 from mml.artifact import Artifact
-from mml.downloader_process import downloader_process
+from mml.resolver_process import resolver_process
 
 # To prevent overloading and smooth queue handling
 LOOP_DELAY = 0.25
@@ -44,7 +44,7 @@ def sizeof_fmt(num, suffix="B") -> str:
     return f"{num:.1f}Yi{suffix}"
 
 
-class Downloader:
+class FileResolver:
     def __init__(
         self,
         workers_num: int,
@@ -52,10 +52,11 @@ class Downloader:
         clear_on_finish: bool = True,
         clear_on_error: bool = True,
     ):
-        """Initializes downloader instance
+        """Initializes FileResolver instance
+        This class process and downloads files from the queue
 
         Args:
-            workers_num (int): number of processes to download data
+            workers_num (int): number of processes to resolve files data
             logging_queue (multiprocessing.Queue): queue for worker_configurer()
             clear_on_finish (bool, optional): True to call clear() on finish. Defaults to True
             clear_on_error (bool, optional): True to call clear() in case of error. Defaults to True
@@ -70,7 +71,7 @@ class Downloader:
 
         self._stop_flag = multiprocessing.Value(ctypes.c_bool, False)
         self._error_flag = multiprocessing.Value(ctypes.c_bool, False)
-        self._bytes_downloaded = multiprocessing.Value(ctypes.c_uint64, 0)
+        self._bytes_processed = multiprocessing.Value(ctypes.c_uint64, 0)
 
         # Start background loop
         self._workers = []
@@ -85,7 +86,7 @@ class Downloader:
     def finished(self) -> bool:
         """
         Returns:
-            bool: True if nothing to download
+            bool: True if nothing to process
         """
         if not self._queue.empty():
             return False
@@ -94,9 +95,9 @@ class Downloader:
     def add_artifact(self, artifact_: Artifact) -> None:
         """Adds artifact to the queue and number of total bytes
         Args:
-            artifact_ (Artifact): artifact to download
+            artifact_ (Artifact): artifact to process
         """
-        logging.debug(f"Adding artifact {artifact_} to the downloader queue. Size: {artifact_.size}")
+        logging.debug(f"Adding artifact {artifact_} to the queue. Size: {artifact_.size}")
         self._bytes_total += artifact_.size
         self._queue.put(artifact_)
 
@@ -106,7 +107,7 @@ class Downloader:
     def error(self) -> bool:
         """
         Returns:
-            bool: True in case of error occurred while downloading
+            bool: True in case of error occurred while processing files
         """
         with self._error_flag.get_lock():
             error_flag_ = self._error_flag.value
@@ -121,39 +122,39 @@ class Downloader:
     def bytes_total(self) -> int:
         """
         Returns:
-            int: number of bytes to download (from add_artifact())
+            int: number of bytes to process and download (from add_artifact())
         """
         return self._bytes_total
 
     @property
-    def bytes_downloaded(self) -> int:
+    def bytes_processed(self) -> int:
         """
         Returns:
-            int: number of bytes already downloaded (approx.)
+            int: number of bytes already processed (approx.)
         """
-        with self._bytes_downloaded.get_lock():
-            bytes_downloaded_ = self._bytes_downloaded.value
-        return bytes_downloaded_
+        with self._bytes_processed.get_lock():
+            bytes_processed_ = self._bytes_processed.value
+        return bytes_processed_
 
     def reset_bytes(self) -> None:
-        """Resets bytes_total and bytes_downloaded"""
+        """Resets bytes_total and bytes_processed"""
         self._bytes_total = 0
-        with self._bytes_downloaded.get_lock():
-            self._bytes_downloaded.value = 0
+        with self._bytes_processed.get_lock():
+            self._bytes_processed.value = 0
 
     def get_progress(self) -> float:
         """
         Returns:
-            float: downloading progress in [0-1] range
+            float: processing progress in [0-1] range
         """
-        with self._bytes_downloaded.get_lock():
-            bytes_downloaded_ = self._bytes_downloaded.value
-        if self._bytes_total != 0 and bytes_downloaded_ <= self._bytes_total:
-            return bytes_downloaded_ / self._bytes_total
+        with self._bytes_processed.get_lock():
+            bytes_processed_ = self._bytes_processed.value
+        if self._bytes_total != 0 and bytes_processed_ <= self._bytes_total:
+            return bytes_processed_ / self._bytes_total
         return 0.0 if self._bytes_total == 0 else 1.0
 
     def clear(self) -> None:
-        """Clears queue, bytes_total, bytes_downloaded and calls garbage collector
+        """Clears queue, bytes_total, bytes_processed and calls garbage collector
         NOTE: Doesn't clear error flag! You must clear it manually
         """
         while not self._queue.empty():
@@ -169,7 +170,7 @@ class Downloader:
         Args:
             stop_background_thread (bool, optional): True to stop _checker_loop(). Defaults to False
         """
-        logging.info("Stopping downloader")
+        logging.info("Stopping file resolver")
 
         # Request stop
         with self._stop_flag.get_lock():
@@ -196,15 +197,15 @@ class Downloader:
         # Clear everything
         self.clear()
 
-        logging.info("Downloader stopped")
+        logging.info("File resolver stopped")
 
     def _stats_cli(self) -> None:
-        """Prints download stats each STATS_INTERVAL"""
+        """Prints resolver stats each STATS_INTERVAL"""
         if time.time() - self._stats_timer >= STATS_INTERVAL:
             self._stats_timer = time.time()
             progress = self.get_progress() * 100.0
             logging.info(
-                f"Processed {sizeof_fmt(self.bytes_downloaded)} / {sizeof_fmt(self.bytes_total)} ({progress:.2f}%)"
+                f"Processed {sizeof_fmt(self.bytes_processed)} / {sizeof_fmt(self.bytes_total)} ({progress:.2f}%)"
             )
 
     def _checker_loop(self) -> None:
@@ -222,14 +223,14 @@ class Downloader:
             with self._error_flag.get_lock():
                 error_flag_ = self._error_flag.value
 
-            # Stop all workers in case of error or if nothing to download
+            # Stop all workers in case of error or if nothing to process
             if error_flag_ or (self._queue.empty() and len(self._workers) != 0):
                 with self._stop_flag.get_lock():
                     if not self._stop_flag.value:
                         logging.debug("Stopping workers")
                         self._stop_flag.value = True
 
-            # Start workers if we have data to download and no errors
+            # Start workers if we have data to process and no errors
             if not error_flag_ and not self._queue.empty() and len(self._workers) == 0:
                 cleared = False
                 self._finished = False
@@ -239,13 +240,13 @@ class Downloader:
                 for i in range(self._workers_num):
                     logging.debug(f"Starting worker {i + 1}")
                     worker = multiprocessing.Process(
-                        target=downloader_process,
+                        target=resolver_process,
                         args=(
                             i + 1,
                             self._queue,
                             self._stop_flag,
                             self._error_flag,
-                            self._bytes_downloaded,
+                            self._bytes_processed,
                             self._logging_queue,
                         ),
                     )
@@ -253,7 +254,7 @@ class Downloader:
                     self._workers.append(worker)
                     time.sleep(0.1)
 
-            # Downloading considered finished only after all process are finished
+            # Resolving considered finished only after all process are finished
             if len(self._workers) == 0 and self._queue.empty():
                 self._finished = True
 

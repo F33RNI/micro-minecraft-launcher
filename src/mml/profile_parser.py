@@ -26,7 +26,7 @@ from dateutil import parser
 
 from mml._version import LAUNCHER_VERSION
 from mml.artifact import Artifact
-from mml.download_artifact import download_artifact
+from mml.resolve_artifact import resolve_artifact
 
 # Relative to game dir
 VERSIONS_DIR = "versions"
@@ -270,7 +270,7 @@ class ProfileParser:
             if not download:
                 return None
             version_artifact = Artifact(version_info, parent_dir=self.versions_dir)
-            if not download_artifact(version_artifact):
+            if not resolve_artifact(version_artifact):
                 return None
 
         return version_info["path"]

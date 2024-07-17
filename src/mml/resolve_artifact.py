@@ -38,12 +38,12 @@ DOWNLOAD_ATTEMPTS = 3
 ATTEMPT_DELAY = 1.0
 
 
-def download_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
+def resolve_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
     """Checks if artifact exists (and verifies it's checksum) and downloads it if not
-    Also, unpacks it if needed
+    Also, copies and unpacks it if needed
 
     Args:
-        artifact_ (Artifact): artifact instance to download
+        artifact_ (Artifact): artifact instance to download, copy and unpack
 
     Returns:
         str or None: path to artifact if exists or downloaded successfully or None in case of error
@@ -97,7 +97,7 @@ def download_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
         if _attempt < DOWNLOAD_ATTEMPTS:
             time.sleep(ATTEMPT_DELAY)
             logging.info(f"Trying to download again {_attempt + 1} / {DOWNLOAD_ATTEMPTS}")
-            return download_artifact(artifact_, _attempt=_attempt)
+            return resolve_artifact(artifact_, _attempt=_attempt)
 
         # No more tries
         else:
@@ -134,7 +134,7 @@ def unpack_copy(artifact_: Artifact, artifact_path: str) -> None:
             return None
 
     # Copy if needed
-    if artifact_.copy_to:
+    if artifact_.copy_to and not os.path.exists(artifact_.copy_to):
         copy_to_dir = os.path.dirname(artifact_.copy_to)
         if not os.path.exists(copy_to_dir):
             logging.debug(f"Creating {copy_to_dir} directory")

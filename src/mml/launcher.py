@@ -30,7 +30,7 @@ from typing import Dict, List
 
 from mml._version import LAUNCHER_VERSION
 from mml.deps_builder import DepsBuilder
-from mml.downloader import Downloader
+from mml.file_resolver import FileResolver
 from mml.jdk_check_install import classpath_separator
 from mml.profile_parser import ProfileParser
 
@@ -58,7 +58,7 @@ class State(IntEnum):
     ASSETS = 4
     LIBRARIES = 5
     LOG_CONFIG = 6
-    DOWNLOAD = 7
+    PROCESS_FILES = 7
     PRELAUNCH = 8
     MINECRAFT = 9
     ERROR = -1
@@ -67,7 +67,7 @@ class State(IntEnum):
 class Launcher(Thread):
     def __init__(
         self,
-        downloader_: Downloader,
+        file_resolver_: FileResolver,
         profile_parser_: ProfileParser,
         version_id: str,
         env_variables: Dict or None = None,
@@ -82,7 +82,7 @@ class Launcher(Thread):
         extra_game_args: List[str] or None = None,
     ) -> None:
         Thread.__init__(self)
-        self._downloader = downloader_
+        self._file_resolver = file_resolver_
         self._profile_parser = profile_parser_
         self._version_id = version_id
         self._env_variables = env_variables
@@ -141,11 +141,11 @@ class Launcher(Thread):
 
             logging.info("Preparing data")
 
-            self._downloader.clear()
+            self._file_resolver.clear()
 
             # Create dependency builder instance
             deps_builder_ = DepsBuilder(
-                self._downloader.add_artifact,
+                self._file_resolver.add_artifact,
                 self._profile_parser.game_dir,
                 self._profile_parser.versions_dir,
                 self._version_id,
@@ -167,14 +167,14 @@ class Launcher(Thread):
                 raise Exception("Unable to get client")
             logging.debug("get_client() done")
 
-            # Download assets
+            # Resolve assets
             self._state = State.ASSETS
             asset_index = deps_builder_.get_assets()
             if not asset_index:
                 raise Exception("Unable to get assets")
             logging.debug("get_assets() done")
 
-            # Download libraries and natives
+            # Resolve libraries and natives
             self._state = State.LIBRARIES
             libs = deps_builder_.get_libraries()
             if libs is None:
@@ -195,20 +195,20 @@ class Launcher(Thread):
                 with open(log_config_path, "w+", encoding="utf-8") as log_config_io:
                     log_config_io.write(log_config)
 
-            # Wait for everything to download
-            self._state = State.DOWNLOAD
-            logging.info("Waiting for downloader to finish")
-            while not self._downloader.finished:
+            # Wait for everything to resolve
+            self._state = State.PROCESS_FILES
+            logging.info("Waiting for file resolver to finish")
+            while not self._file_resolver.finished:
                 time.sleep(0.1)
 
             # Check for error -> clear it and exit
-            if self._downloader.error:
-                self._downloader.clear_error()
-                logging.error("Downloader finished with error")
+            if self._file_resolver.error:
+                self._file_resolver.clear_error()
+                logging.error("File resolver finished with error")
                 self._state = State.ERROR
                 return
 
-            logging.info("Downloader finished successfully")
+            logging.info("File resolver finished successfully")
             self._state = State.PRELAUNCH
 
             # Build classpath from client and all libraries
@@ -360,14 +360,14 @@ class Launcher(Thread):
             logging.error(f"Error launching minecraft: {e}", exc_info=e)
 
     def stop(self) -> None:
-        """Stops any downloads, minecraft and waits for the launcher thread to stop"""
+        """Stops any downloads (file resolvers), minecraft and waits for the launcher thread to stop"""
         if self._state == State.IDLE or self._state == State.ERROR:
             logging.debug("Nothing to stop")
             return
 
-        # Stop downloads
-        if not self._downloader.finished:
-            self._downloader.stop()
+        # Stop file resolver
+        if not self._file_resolver.finished:
+            self._file_resolver.stop()
 
         # Kill minecraft
         logging.warning("Stop requested")

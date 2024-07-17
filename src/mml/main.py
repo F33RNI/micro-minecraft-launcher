@@ -30,7 +30,7 @@ import requests
 
 from mml._version import __version__
 from mml.config_manager import CONFIG_DEFAULT, ConfigManager
-from mml.downloader import Downloader
+from mml.file_resolver import FileResolver
 from mml.launcher import Launcher, State
 from mml.logging_handler import LoggingHandler, worker_configurer
 from mml.profile_parser import ProfileParser
@@ -166,11 +166,12 @@ def parse_args() -> argparse.Namespace:
         ' NOTE: Will append to the bottom of "game_args" from config file',
     )
     parser.add_argument(
-        "--downloader-processes",
+        "--resolver-processes",
         type=int,
         required=False,
         default=None,
-        help=f"number of processes to download files (Default: {CONFIG_DEFAULT['downloader_processes']})",
+        help="number of processes to resolve (download, copy and unpack) files"
+        f"(Default: {CONFIG_DEFAULT['resolver_processes']})",
     )
     parser.add_argument(
         "id",
@@ -292,7 +293,7 @@ def main():
     os.environ["SSL_CERT_FILE"] = cert_file
     os.environ["REQUESTS_CA_BUNDLE"] = cert_file
 
-    downloader_ = None
+    file_resolver_ = None
     try:
         # Log software version and GitHub link
         logging.info(f"micro-minecraft-launcher version: {__version__}")
@@ -323,7 +324,7 @@ def main():
         if version_id:
             logging.info(f"Version ID: {version_id}")
 
-            downloader_ = Downloader(config_manager_.get("downloader_processes"), logging_handler_.queue_)
+            file_resolver_ = FileResolver(config_manager_.get("resolver_processes"), logging_handler_.queue_)
 
             username = config_manager_.get("user")
             if not username:
@@ -375,7 +376,7 @@ def main():
             logging.info(f"Extra game (Minecraft) arguments: {' '.join(extra_game_args)}")
 
             launcher_ = Launcher(
-                downloader_,
+                file_resolver_,
                 profile_parser_,
                 version_id,
                 env_variables=env_variables,
@@ -408,9 +409,9 @@ def main():
     except Exception as e:
         logging.error(e, exc_info=e)
 
-    # Stop all downloads
-    if downloader_ is not None:
-        downloader_.stop(stop_background_thread=True)
+    # Stop all processes
+    if file_resolver_ is not None:
+        file_resolver_.stop(stop_background_thread=True)
 
     # Finally, stop logging loop
     logging.info("micro-minecraft-launcher exited")
