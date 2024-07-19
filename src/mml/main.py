@@ -191,10 +191,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--run-before",
-        nargs="+",
+        type=str,
         required=False,
-        help="run specified command before launching game"
-        " (ex.: --run-before java -jar forge_installer.jar --installClient .)"
+        default=None,
+        help="run specified command before launching game (separated with spaces)"
+        ' (ex.: --run-before "java -jar forge_installer.jar --installClient .")'
         " NOTE: Consider adding --write-profiles argument"
         " NOTE: Consider adding --delete-files forge*installer.jar argument"
         ' NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path'
