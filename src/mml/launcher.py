@@ -126,10 +126,12 @@ class Launcher(Thread):
             version_path = self._profile_parser.version_path_by_id(self._version_id, download=True)
             if not version_path:
                 logging.error(f"Unable to load version {self._version_id}")
+                self._state = State.ERROR
                 return
             version_json = self._profile_parser.parse_version_json(version_path)
             if not version_json:
                 logging.error(f"Unable to load version {self._version_id}")
+                self._state = State.ERROR
                 return
 
             # Use version's dir if we need to isolate profile
