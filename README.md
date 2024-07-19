@@ -44,13 +44,13 @@
 ### 📄 CLI usage
 
 ```text
-usage: micro-minecraft-launcher-1.2.dev-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
-                                                     [--auth-access-token AUTH_ACCESS_TOKEN] [--user-type USER_TYPE] [-i]
-                                                     [--java-path JAVA_PATH] [-e KEY=VALUE [KEY=VALUE ...]] [-j JVM_ARGS]
-                                                     [-g GAME_ARGS] [--resolver-processes RESOLVER_PROCESSES] [--write-profiles]
-                                                     [--run-before RUN_BEFORE [RUN_BEFORE ...]]
-                                                     [--delete-files DELETE_FILES [DELETE_FILES ...]] [--verbose] [--version]
-                                                     [id]
+usage: micro-minecraft-launcher-1.2.dev2-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
+                                                      [--auth-access-token AUTH_ACCESS_TOKEN] [--user-type USER_TYPE] [-i]
+                                                      [--java-path JAVA_PATH] [-e KEY=VALUE [KEY=VALUE ...]] [-j JVM_ARGS]
+                                                      [-g GAME_ARGS] [--resolver-processes RESOLVER_PROCESSES] [--write-profiles]
+                                                      [--run-before RUN_BEFORE [RUN_BEFORE ...]]
+                                                      [--delete-files DELETE_FILES [DELETE_FILES ...]] [--verbose] [--version]
+                                                      [id]
 
 Simple cross-platform cli launcher for Minecraft
 
@@ -83,7 +83,7 @@ options:
   -j JVM_ARGS, --jvm-args JVM_ARGS
                         extra arguments for Java separated with spaces (Ex.: -j="-Xmx6G -XX:G1NewSizePercent=20") NOTE: You should
                         define it with double quotes as in example NOTE: If an argument contains spaces, you should define it with
-                        double quotes: -j '-foo "multiple words"' NOTE: Will append to the bottom of "game_args" from config file
+                        double quotes: -j '-foo "multiple words"' NOTE: Will append to the bottom of "jvm_args" from config file
   -g GAME_ARGS, --game-args GAME_ARGS
                         extra arguments for Minecraft separated with spaces (Ex.: -g="--server 192.168.0.1 --port 25565") NOTE: You
                         should define it with double quotes as in example NOTE: If an argument contains spaces, you should define it
@@ -96,6 +96,7 @@ options:
                         run specified command before launching game (ex.: --run-before java -jar forge_installer.jar --installClient
                         .) NOTE: Consider adding --write-profiles argument NOTE: Consider adding --delete-files forge*installer.jar
                         argument NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path
+                        NOTE: Will append to the bottom of "run_before" from config file
   --delete-files DELETE_FILES [DELETE_FILES ...]
                         delete files before launching minecraft. Uses glob to find files (Ex.: --delete-files "forge*installer.jar"
                         "hs_err_pid*.log")
