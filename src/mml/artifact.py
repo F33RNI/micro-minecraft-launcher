@@ -53,6 +53,33 @@ class Artifact:
         if target_file:
             self._artifact["path"] = target_file
 
+        # Old style
+        # Ex.: net.fabricmc:sponge-mixin:0.13.3+mixin.0.8.5 ->
+        # net/fabricmc/sponge-mixin/0.13.3+mixin.0.8.5/sponge-mixin-0.13.3+mixin.0.8.5.jar
+        if "path" not in self._artifact and "name" in self._artifact:
+            package_name_version = self._artifact["name"].split[":"]
+            if len(package_name_version) != 3:
+                logging.warning(f"Unknown artifact name format: {self._artifact['name']}")
+            else:
+                package = package_name_version[0]
+                name = package_name_version[1]
+                version = package_name_version[2]
+                uri_from_name = f"{package}/{name}/{version}/{name}-{version}"
+                if (
+                    not uri_from_name.endswith(".jar")
+                    and not uri_from_name.endswith(".zip")
+                    and not uri_from_name.endswith(".dll")
+                    and not uri_from_name.endswith(".so")
+                ):
+                    uri_from_name += ".jar"
+
+                self._artifact["path"] = uri_from_name
+
+                if "url" in self._artifact:
+                    if not self._artifact["url"].endswith("/"):
+                        self._artifact["url"] += "/"
+                    self._artifact["url"] += uri_from_name
+
     @property
     def parent_dir(self) -> str:
         """
