@@ -496,7 +496,7 @@ def main():
                 run_before_cmd.append(run_before_arg)
         logging.info(f"Run before: {' '.join(run_before_cmd)}")
         if run_before_cmd:
-            if run_before(run_before_cmd, game_dir):
+            if run_before(run_before_cmd.copy(), game_dir):
                 # Update profiles
                 versions = profile_parser_.parse_versions()
                 if args.write_profiles or config_manager_.get("write_profiles"):
