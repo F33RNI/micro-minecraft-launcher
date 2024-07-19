@@ -162,7 +162,7 @@ def parse_args() -> argparse.Namespace:
         help='extra arguments for Java separated with spaces (Ex.: -j="-Xmx6G -XX:G1NewSizePercent=20")'
         " NOTE: You should define it with double quotes as in example"
         " NOTE: If an argument contains spaces, you should define it with double quotes: -j '-foo \"multiple words\"'"
-        ' NOTE: Will append to the bottom of "game_args" from config file',
+        ' NOTE: Will append to the bottom of "jvm_args" from config file',
     )
     parser.add_argument(
         "-g",
@@ -197,7 +197,8 @@ def parse_args() -> argparse.Namespace:
         " (ex.: --run-before java -jar forge_installer.jar --installClient .)"
         " NOTE: Consider adding --write-profiles argument"
         " NOTE: Consider adding --delete-files forge*installer.jar argument"
-        ' NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path',
+        ' NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path'
+        ' NOTE: Will append to the bottom of "run_before" from config file',
     )
     parser.add_argument(
         "--delete-files",
@@ -488,7 +489,11 @@ def main():
             write_profiles(game_dir, versions)
 
         # Run custom command
-        run_before_cmd = config_manager_.get("run_before")
+        run_before_cmd = config_manager_.get("run_before", [], ignore_args=True)
+        if args.run_before:
+            for run_before_arg in shlex.split(args.run_before, posix=True):
+                run_before_cmd.append(run_before_arg)
+        logging.info(f"Run before: {' '.join(run_before_cmd)}")
         if run_before_cmd:
             if run_before(run_before_cmd, game_dir):
                 # Update profiles
@@ -497,7 +502,7 @@ def main():
                     write_profiles(game_dir, versions)
 
         # Delete files before launching
-        delete_patterns = config_manager_.get("delete_files", [])
+        delete_patterns = config_manager_.get("delete_files", [], ignore_args=True)
         if args.delete_files:
             delete_patterns.extend(args.delete_files)
         delete_files(delete_patterns)
