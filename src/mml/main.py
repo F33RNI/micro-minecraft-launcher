@@ -51,7 +51,7 @@ EXAMPLE_USAGE = """examples:
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
   micro-minecraft-launcher --write-profiles
-  micro-minecraft-launcher --write-profiles --install-forge forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
+  micro-minecraft-launcher --write-profiles --run-before java -jar forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
 """
 
 LAUNCHER_PROFILES_FILE = "launcher_profiles.json"
@@ -187,27 +187,24 @@ def parse_args() -> argparse.Namespace:
         "--write-profiles",
         action="store_true",
         default=False,
-        help="write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge)",
+        help="write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge/Fabric)",
     )
     parser.add_argument(
-        "--install-forge",
-        type=str,
+        "--run-before",
+        nargs="+",
         required=False,
-        default=None,
-        help="run specified path to forge installer (.jar file) with --installClient game_dir"
+        help="run specified command before launching game"
+        " (ex.: --run-before java -jar forge_installer.jar --installClient .)"
         " NOTE: Consider adding --write-profiles argument"
         " NOTE: Consider adding --delete-files forge*installer.jar argument"
-        " NOTE: Will download JRE / JDK 17",
+        ' NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path',
     )
     parser.add_argument(
         "--delete-files",
         nargs="+",
         required=False,
         help="delete files before launching minecraft. Uses glob to find files"
-        ' (Ex.: --delete-files "forge*installer.jar" "hs_err_pid*.log")'
-        " NOTE: Consider adding --write-profiles argument"
-        " NOTE: Consider adding --delete-forge-installer argument"
-        " NOTE: Will download JRE / JDK 17",
+        ' (Ex.: --delete-files "forge*installer.jar" "hs_err_pid*.log")',
     )
     parser.add_argument(
         "id",
@@ -356,63 +353,61 @@ def write_profiles(game_dir: str, versions: List[Dict]) -> None:
         json.dump(launcher_profiles, launcher_profiles_io, ensure_ascii=False, indent=4)
 
 
-def install_forge(forge_path: str, game_dir: str) -> bool:
-    """Installs forge
+def run_before(command: List[str], cwd: str) -> bool:
+    """Runs custom command before launching game
+    (Will install Java 17 if first argument is "java" and replace it with locally installed java)
 
     Args:
-        forge_path (str): path to forge installer (.jar)
-        game_dir (str): path to .minecraft (where to install forge)
+        command (List[str]): command and all arguments
+        cwd (str): path to .minecraft
 
     Raises:
         Exception: java error or interrupted
 
     Returns:
-        bool: if installer process finished without interrupting
+        bool: if process finished without interrupting (will not check for process exit code)
     """
-    if not os.path.exists(forge_path):
-        logging.warning(f"Skipping forge installation. Path {forge_path} doesn't exist")
-        return False
+    if command[0] == "java":
+        java_ = jdk_check_install(version=17)
+        if not java_:
+            raise Exception("Unable to install Java for --run-before")
+        command[0] = java_
 
-    forge_java = jdk_check_install(version=17)
-    if not forge_java:
-        raise Exception("Unable to install Java for installing Forge")
-
-    installer_cmd = [forge_java, "-jar", forge_path, "--installClient", game_dir]
-    logging.info(f"Installing forge using command: {' '.join(installer_cmd)}")
-    installer_process = subprocess.Popen(
-        installer_cmd,
+    logging.info(f"Running: {' '.join(command)}")
+    process = subprocess.Popen(
+        command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         shell=False,
-        cwd=game_dir,
+        cwd=cwd,
     )
 
     # Redirect logs and capture CTRL+C
     try:
-        while installer_process.poll() is None:
+        while process.poll() is None:
             # Read logs from STOUT (blocking)
-            installer_stdout = installer_process.stdout.readline()
-            if not installer_stdout:
+            stdout = process.stdout.readline()
+            if not stdout:
                 continue
 
             # Redirect log
-            log_line = installer_stdout.decode("utf-8", errors="replace").strip()
-            logging.info(f"[Forge installer] {log_line}")
+            log_line = stdout.decode("utf-8", errors="replace").strip()
+            logging.info(f"[Run before] {log_line}")
 
     except (SystemExit, KeyboardInterrupt) as e:
-        logging.warning("Interrupted! Killing forge installer")
-        if installer_process.poll() is None:
+        logging.warning("Interrupted! Killing run-before process")
+        if process.poll() is None:
             try:
-                installer_process.kill()
+                process.kill()
             except Exception as e_:
-                logging.warning(f"Unable to kill forge installer process: {e_}")
+                logging.warning(f"Unable to kill process: {e_}")
                 logging.debug("Error details", exc_info=e_)
 
         # Re-raise interrupt
         raise e
 
     # Installer stopped
-    logging.info("Forge installer process stopped")
+    logging.info("run-before process stopped")
     return True
 
 
@@ -492,10 +487,10 @@ def main():
         if args.write_profiles or config_manager_.get("write_profiles", ignore_args=True):
             write_profiles(game_dir, versions)
 
-        # Install forge client
-        forge_path = config_manager_.get("install_forge")
-        if forge_path:
-            if install_forge(forge_path, game_dir):
+        # Run custom command
+        run_before_cmd = config_manager_.get("run_before")
+        if run_before_cmd:
+            if run_before(run_before_cmd, game_dir):
                 # Update profiles
                 versions = profile_parser_.parse_versions()
                 if args.write_profiles or config_manager_.get("write_profiles"):

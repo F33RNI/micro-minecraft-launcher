@@ -44,13 +44,13 @@
 ### 📄 CLI usage
 
 ```text
-usage: micro-minecraft-launcher-1.1.dev7-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
-                                                      [--auth-access-token AUTH_ACCESS_TOKEN] [--user-type USER_TYPE] [-i]
-                                                      [--java-path JAVA_PATH] [-e KEY=VALUE [KEY=VALUE ...]] [-j JVM_ARGS]
-                                                      [-g GAME_ARGS] [--resolver-processes RESOLVER_PROCESSES] [--write-profiles]
-                                                      [--install-forge INSTALL_FORGE]
-                                                      [--delete-files DELETE_FILES [DELETE_FILES ...]] [--verbose] [--version]
-                                                      [id]
+usage: micro-minecraft-launcher-1.2.dev-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
+                                                     [--auth-access-token AUTH_ACCESS_TOKEN] [--user-type USER_TYPE] [-i]
+                                                     [--java-path JAVA_PATH] [-e KEY=VALUE [KEY=VALUE ...]] [-j JVM_ARGS]
+                                                     [-g GAME_ARGS] [--resolver-processes RESOLVER_PROCESSES] [--write-profiles]
+                                                     [--run-before RUN_BEFORE [RUN_BEFORE ...]]
+                                                     [--delete-files DELETE_FILES [DELETE_FILES ...]] [--verbose] [--version]
+                                                     [id]
 
 Simple cross-platform cli launcher for Minecraft
 
@@ -91,15 +91,14 @@ options:
                         file
   --resolver-processes RESOLVER_PROCESSES
                         number of processes to resolve (download, copy and unpack) files(Default: 4)
-  --write-profiles      write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge)
-  --install-forge INSTALL_FORGE
-                        run specified path to forge installer (.jar file) with --installClient game_dir NOTE: Consider adding
-                        --write-profiles argument NOTE: Consider adding --delete-files forge*installer.jar argument NOTE: Will
-                        download JRE / JDK 17
+  --write-profiles      write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge/Fabric)
+  --run-before RUN_BEFORE [RUN_BEFORE ...]
+                        run specified command before launching game (ex.: --run-before java -jar forge_installer.jar --installClient
+                        .) NOTE: Consider adding --write-profiles argument NOTE: Consider adding --delete-files forge*installer.jar
+                        argument NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path
   --delete-files DELETE_FILES [DELETE_FILES ...]
                         delete files before launching minecraft. Uses glob to find files (Ex.: --delete-files "forge*installer.jar"
-                        "hs_err_pid*.log") NOTE: Consider adding --write-profiles argument NOTE: Consider adding --delete-forge-
-                        installer argument NOTE: Will download JRE / JDK 17
+                        "hs_err_pid*.log")
   --verbose             debug logs
   --version             show launcher's version number and exit
 
@@ -111,7 +110,7 @@ examples:
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
   micro-minecraft-launcher --write-profiles
-  micro-minecraft-launcher --write-profiles --install-forge forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
+  micro-minecraft-launcher --write-profiles --run-before java -jar forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
 ```
 
 > ⚠️ NOTE: CLI arguments will overwrite config
@@ -170,7 +169,13 @@ examples:
   ],
   "resolver_processes": 4 (number of processes to download / copy / unpack files),
   "write_profiles": true (write all found local versions into game_dir/launcher_profiles.json),
-  "install_forge": "path/to/forge-...-installer.jar",
+  "run_before": [
+    "java",
+    "-jar",
+    "path/to/forge-...-installer.jar",
+    "--installClient",
+    "."
+  ]
   "delete_files": [
       "any file patterns to delete (for glob)",
       ...
@@ -207,7 +212,13 @@ examples:
         "530"
     ],
     "write_profiles": true,
-    "install_forge": "forge-1.18.2-40.2.4-installer.jar",
+    "run_before": [
+        "java",
+        "-jar",
+        "forge-1.18.2-40.2.4-installer.jar",
+        "--installClient",
+        "."
+    ],
     "delete_files": [
         "forge-1.18.2-40.2.4-installer*",
         "hs_err_pid*.log"

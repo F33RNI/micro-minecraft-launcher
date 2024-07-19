@@ -106,13 +106,22 @@ def resolve_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
 
     logging.debug("Artifact downloaded successfully")
 
-    unpack_copy(artifact_, artifact_path)
+    if not unpack_copy(artifact_, artifact_path):
+        return None
 
     return artifact_path
 
 
-def unpack_copy(artifact_: Artifact, artifact_path: str) -> None:
-    """Unpacks and copies artifact if needed"""
+def unpack_copy(artifact_: Artifact, artifact_path: str) -> bool:
+    """Unpacks and copies artifact if needed
+
+    Args:
+        artifact_ (Artifact): artifact instance
+        artifact_path (str): path to downloaded artifact
+
+    Returns:
+        bool: False in case of error
+    """
     # Unpack it if needed without some files
     if artifact_.unpack_into:
         logging.debug(f"Unpacking {artifact_path} into {artifact_.unpack_into}")
@@ -131,14 +140,23 @@ def unpack_copy(artifact_: Artifact, artifact_path: str) -> None:
         except Exception as e:
             logging.error(f"Unable to unpack {artifact_path}: {e}")
             logging.debug("Error details", exc_info=e)
-            return None
+            return False
 
     # Copy if needed
     if artifact_.copy_to and not os.path.exists(artifact_.copy_to):
-        copy_to_dir = os.path.dirname(artifact_.copy_to)
-        if not os.path.exists(copy_to_dir):
-            logging.debug(f"Creating {copy_to_dir} directory")
-            os.makedirs(copy_to_dir, exist_ok=True)
+        try:
+            copy_to_dir = os.path.dirname(artifact_.copy_to)
+            if not os.path.exists(copy_to_dir):
+                logging.debug(f"Creating {copy_to_dir} directory")
+                os.makedirs(copy_to_dir, exist_ok=True)
 
-        logging.debug(f"Copying {artifact_path} into {artifact_.copy_to}")
-        shutil.copyfile(artifact_path, artifact_.copy_to)
+            logging.debug(f"Copying {artifact_path} into {artifact_.copy_to}")
+            shutil.copyfile(artifact_path, artifact_.copy_to)
+
+        except Exception as e:
+            logging.error(f"Unable to copy {artifact_path} into {artifact_.copy_to}: {e}")
+            logging.debug("Error details", exc_info=e)
+            return False
+
+    # Seems OK
+    return True
