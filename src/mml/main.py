@@ -51,7 +51,7 @@ EXAMPLE_USAGE = """examples:
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
   micro-minecraft-launcher --write-profiles
-  micro-minecraft-launcher --write-profiles --run-before java -jar forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
+  micro-minecraft-launcher --write-profiles --run-before-java 17 --run-before "java -jar forge-1.18.2-40.2.4-installer.jar --installClient ." --delete-files "forge*.jar"
 """
 
 LAUNCHER_PROFILES_FILE = "launcher_profiles.json"
@@ -194,12 +194,18 @@ def parse_args() -> argparse.Namespace:
         type=str,
         required=False,
         default=None,
-        help="run specified command before launching game (separated with spaces)"
-        ' (ex.: --run-before "java -jar forge_installer.jar --installClient .")'
+        help="run specified command in shell before launching game"
+        ' (ex.: --run-before "{local_java} -jar forge_installer.jar --installClient .")'
+        " NOTE: Consider adding --run-before-java 17 argument to replace all {local_java} with downloaded java"
         " NOTE: Consider adding --write-profiles argument"
-        " NOTE: Consider adding --delete-files forge*installer.jar argument"
-        ' NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path'
-        ' NOTE: Will append to the bottom of "run_before" from config file',
+        ' NOTE: Consider adding --delete-files "file/to/delete" argument',
+    )
+    parser.add_argument(
+        "--run-before-java",
+        type=int,
+        required=False,
+        default=None,
+        help='download specified version of Java and replace all "{local_java}" in --run-before with local java path',
     )
     parser.add_argument(
         "--delete-files",
@@ -355,12 +361,11 @@ def write_profiles(game_dir: str, versions: List[Dict]) -> None:
         json.dump(launcher_profiles, launcher_profiles_io, ensure_ascii=False, indent=4)
 
 
-def run_before(command: List[str], cwd: str) -> bool:
+def run_before(command: str, cwd: str) -> bool:
     """Runs custom command before launching game
-    (Will install Java 17 if first argument is "java" and replace it with locally installed java)
 
     Args:
-        command (List[str]): command and all arguments
+        command (str): shell command and all arguments
         cwd (str): path to .minecraft
 
     Raises:
@@ -369,18 +374,12 @@ def run_before(command: List[str], cwd: str) -> bool:
     Returns:
         bool: if process finished without interrupting (will not check for process exit code)
     """
-    if command[0] == "java":
-        java_ = jdk_check_install(version=17)
-        if not java_:
-            raise Exception("Unable to install Java for --run-before")
-        command[0] = java_
-
-    logging.info(f"Running: {' '.join(command)}")
+    logging.info(f"Running: {command}")
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        shell=False,
+        shell=True,
         cwd=cwd,
     )
 
@@ -473,8 +472,8 @@ def main():
 
         config_manager_ = ConfigManager(args.config, args)
 
-        # Log minecraft dir
-        game_dir = config_manager_.get("game_dir")
+        # Get absolute path to minecraft dir and log it
+        game_dir = os.path.abspath(config_manager_.get("game_dir"))
         logging.info(f"Game directory: {game_dir}")
         profile_parser_ = ProfileParser(game_dir)
         versions = profile_parser_.parse_versions()
@@ -490,13 +489,18 @@ def main():
             write_profiles(game_dir, versions)
 
         # Run custom command
-        run_before_cmd = config_manager_.get("run_before", [], ignore_args=True)
-        if args.run_before:
-            for run_before_arg in shlex.split(args.run_before, posix=True):
-                run_before_cmd.append(run_before_arg)
-        logging.info(f"Run before: {' '.join(run_before_cmd)}")
+        run_before_cmd = config_manager_.get("run_before")
         if run_before_cmd:
-            if run_before(run_before_cmd.copy(), game_dir):
+            # Install Java if needed
+            run_before_java_version = config_manager_.get("run_before_java")
+            if run_before_java_version is not None:
+                java_ = jdk_check_install(version=int(run_before_java_version))
+                if not java_:
+                    raise Exception("Unable to install Java for --run-before-java")
+                run_before_cmd = run_before_cmd.replace("{local_java}", java_)
+
+            # Run
+            if run_before(run_before_cmd, game_dir):
                 # Update profiles
                 versions = profile_parser_.parse_versions()
                 if args.write_profiles or config_manager_.get("write_profiles"):

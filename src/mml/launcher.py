@@ -213,16 +213,22 @@ class Launcher(Thread):
             logging.info("File resolver finished successfully")
             self._state = State.PRELAUNCH
 
+            # Create natives dir if not exists (just in case)
+            if not os.path.exists(deps_builder_.natives_dir):
+                logging.info(f"Creating {deps_builder_.natives_dir} directory")
+                os.makedirs(deps_builder_.natives_dir)
+
             # Build classpath from client and all libraries
-            classpath = [client_jar]
+            classpath = []
             for lib in libs:
                 classpath.append(os.path.join(deps_builder_.libs_dir, lib))
+            classpath.append(client_jar)
 
             # Build environment variables
             env_variables_ = {
                 "game_directory": cwd,
                 "library_directory": deps_builder_.libs_dir,
-                "natives_directory": os.path.join(self._profile_parser.versions_dir, deps_builder_.natives_dir),
+                "natives_directory": deps_builder_.natives_dir,
                 "classpath_separator": classpath_separator(),
                 "classpath": classpath_separator().join(classpath),
                 "game_assets": deps_builder_.assets_legacy_dir,
@@ -316,7 +322,6 @@ class Launcher(Thread):
             self._state = State.MINECRAFT
             self._minecraft_process = subprocess.Popen(
                 final_cmd,
-                bufsize=1,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 close_fds=ON_POSIX,

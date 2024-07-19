@@ -76,7 +76,7 @@ class DepsBuilder:
     def natives_dir(self) -> str:
         """
         Returns:
-            str: path to natives relative to version_dir
+            str: full path to native
         """
         return os.path.join(self._version_dir, self._version_id, NATIVES_DIR)
 
@@ -224,7 +224,7 @@ class DepsBuilder:
                 continue
 
             # Add main artifact to the final list and download queue
-            artifact_dict = library.get("downloads", {}).get("artifact", library.get("artifact"))
+            artifact_dict = library.get("downloads", {}).get("artifact", library.get("artifact", library))
             if artifact_dict:
                 artifact_ = Artifact(artifact_dict, parent_dir=libs_dir)
                 self._add_artifact(artifact_)

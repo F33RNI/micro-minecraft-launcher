@@ -44,11 +44,11 @@
 ### 📄 CLI usage
 
 ```text
-usage: micro-minecraft-launcher-1.2.dev2-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
+usage: micro-minecraft-launcher-1.2.dev5-linux-x86_64 [-h] [-c CONFIG] [-d GAME_DIR] [-l] [-u USER] [--auth-uuid AUTH_UUID]
                                                       [--auth-access-token AUTH_ACCESS_TOKEN] [--user-type USER_TYPE] [-i]
                                                       [--java-path JAVA_PATH] [-e KEY=VALUE [KEY=VALUE ...]] [-j JVM_ARGS]
                                                       [-g GAME_ARGS] [--resolver-processes RESOLVER_PROCESSES] [--write-profiles]
-                                                      [--run-before RUN_BEFORE [RUN_BEFORE ...]]
+                                                      [--run-before RUN_BEFORE] [--run-before-java RUN_BEFORE_JAVA]
                                                       [--delete-files DELETE_FILES [DELETE_FILES ...]] [--verbose] [--version]
                                                       [id]
 
@@ -92,11 +92,13 @@ options:
   --resolver-processes RESOLVER_PROCESSES
                         number of processes to resolve (download, copy and unpack) files(Default: 4)
   --write-profiles      write all found local versions into game_dir/launcher_profiles.json (useful for installing Forge/Fabric)
-  --run-before RUN_BEFORE [RUN_BEFORE ...]
-                        run specified command before launching game (ex.: --run-before java -jar forge_installer.jar --installClient
-                        .) NOTE: Consider adding --write-profiles argument NOTE: Consider adding --delete-files forge*installer.jar
-                        argument NOTE: Will download JRE / JDK 17 if first argument is "java" and replace it with local java path
-                        NOTE: Will append to the bottom of "run_before" from config file
+  --run-before RUN_BEFORE
+                        run specified command in shell before launching game (ex.: --run-before "{local_java} -jar
+                        forge_installer.jar --installClient .") NOTE: Consider adding --run-before-java 17 argument to replace all
+                        {local_java} with downloaded java NOTE: Consider adding --write-profiles argument NOTE: Consider adding
+                        --delete-files "file/to/delete" argument
+  --run-before-java RUN_BEFORE_JAVA
+                        download specified version of Java and replace all "{local_java}" in --run-before with local java path
   --delete-files DELETE_FILES [DELETE_FILES ...]
                         delete files before launching minecraft. Uses glob to find files (Ex.: --delete-files "forge*installer.jar"
                         "hs_err_pid*.log")
@@ -111,7 +113,7 @@ examples:
   micro-minecraft-launcher -d /path/to/custom/minecraft -j="-Xmx6G" -g="--server 192.168.0.1" 1.21
   micro-minecraft-launcher -j="-Xmx4G" -g="--width 800 --height 640" 1.18.2
   micro-minecraft-launcher --write-profiles
-  micro-minecraft-launcher --write-profiles --run-before java -jar forge-1.18.2-40.2.4-installer.jar --delete-files forge*.jar
+  micro-minecraft-launcher --write-profiles --run-before-java 17 --run-before "java -jar forge-1.18.2-40.2.4-installer.jar --installClient ." --delete-files "forge*.jar"
 ```
 
 > ⚠️ NOTE: CLI arguments will overwrite config
@@ -170,13 +172,8 @@ examples:
   ],
   "resolver_processes": 4 (number of processes to download / copy / unpack files),
   "write_profiles": true (write all found local versions into game_dir/launcher_profiles.json),
-  "run_before": [
-    "java",
-    "-jar",
-    "path/to/forge-...-installer.jar",
-    "--installClient",
-    "."
-  ]
+  "run_before": "{local_java} -jar path/to/forge-...-installer.jar --installClient .",
+  "run_before_java": version of java to install and replace {local_java} with it's path,
   "delete_files": [
       "any file patterns to delete (for glob)",
       ...
@@ -213,15 +210,44 @@ examples:
         "530"
     ],
     "write_profiles": true,
-    "run_before": [
-        "java",
-        "-jar",
-        "forge-1.18.2-40.2.4-installer.jar",
-        "--installClient",
-        "."
-    ],
+    "run_before": "{local_java} -jar forge-1.18.2-40.2.4-installer.jar --installClient .",
+    "run_before_java": 17,
     "delete_files": [
         "forge-1.18.2-40.2.4-installer*",
+        "hs_err_pid*.log"
+    ]
+}
+```
+
+```json
+{
+    "game_dir": ".",
+    "id": "fabric-loader-0.15.11-1.20.1",
+    "jvm_args": [
+        "-Xss1M",
+        "-Xmx4G",
+        "-XX:+UnlockExperimentalVMOptions",
+        "-XX:+UseG1GC",
+        "-XX:G1NewSizePercent=20",
+        "-XX:G1ReservePercent=20",
+        "-XX:MaxGCPauseMillis=50",
+        "-XX:G1HeapRegionSize=32M",
+        "-Dfml.ignoreInvalidMinecraftCertificates=true",
+        "-Dfml.ignorePatchDiscrepancies=true",
+        "-Djava.net.preferIPv4Stack=true",
+        "-Dminecraft.applet.TargetDirectory=."
+    ],
+    "game_args": [
+        "--width",
+        "925",
+        "--height",
+        "530"
+    ],
+    "write_profiles": true,
+    "run_before": "{local_java} -jar fabric-installer-1.0.1.jar client -dir . -mcversion 1.20.1 -loader 0.15.11",
+    "run_before_java": 17,
+    "delete_files": [
+        "fabric-installer-*",
         "hs_err_pid*.log"
     ]
 }
