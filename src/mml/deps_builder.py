@@ -218,20 +218,30 @@ class DepsBuilder:
             if "name" not in library:
                 continue
 
-            # Check rules
-            if "rules" in library and not rules_check(library["rules"]):
+            # Check rules (both new and old format)
+            if ("rules" in library and not rules_check(library["rules"])) or (
+                "clientreq" in library and library["clientreq"] == False
+            ):
                 logging.debug(f"Skipping library {library['name']}. Disallowed by rules")
                 continue
 
+            # Determine available classifiers
+            classifiers_dict = library.get("downloads", {}).get("classifiers", library.get("classifiers"))
+
+            # Determine main artifact
+            artifact_dict = library.get("downloads", {}).get("artifact", library.get("artifact"))
+            if artifact_dict is None and not classifiers_dict:
+                artifact_dict = library
+
             # Add main artifact to the final list and download queue
-            artifact_dict = library.get("downloads", {}).get("artifact", library.get("artifact", library))
             if artifact_dict:
                 artifact_ = Artifact(artifact_dict, parent_dir=libs_dir)
                 self._add_artifact(artifact_)
                 libs.append(artifact_.path)
+            else:
+                logging.debug("Skipping main artifact. Only natives required?")
 
             # Add natives to the final list and download and unpack them
-            classifiers_dict = library.get("downloads", {}).get("classifiers", library.get("classifiers"))
             if classifiers_dict and "natives" in library and os_name_ in library["natives"]:
                 classifier_name = library["natives"][os_name_]
                 if classifier_name in classifiers_dict:
@@ -262,7 +272,7 @@ class DepsBuilder:
             parent_dir=os.path.join(self._game_dir, LOG_CONFIGS_DIR),
             target_file=logging_client["file"]["id"],
         )
-        log_config_path = resolve_artifact(logging_artifact)
+        log_config_path = resolve_artifact(logging_artifact, verify_checksums=False)
         if not log_config_path:
             return None, None
 

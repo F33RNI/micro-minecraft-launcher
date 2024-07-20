@@ -38,19 +38,18 @@ DOWNLOAD_ATTEMPTS = 3
 ATTEMPT_DELAY = 1.0
 
 
-def resolve_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
+def resolve_artifact(artifact_: Artifact, _attempt: int = 0, verify_checksums: bool = True) -> str or None:
     """Checks if artifact exists (and verifies it's checksum) and downloads it if not
     Also, copies and unpacks it if needed
 
     Args:
         artifact_ (Artifact): artifact instance to download, copy and unpack
+        verify_checksums (bool, optional): False to ignore checksum mismatch. Defaults to True
 
     Returns:
         str or None: path to artifact if exists or downloaded successfully or None in case of error
     """
-    if artifact_.artifact_exists and (
-        not artifact_.checksum_alg or artifact_.target_checksum == artifact_.calculate_actual_checksum()
-    ):
+    if artifact_.artifact_exists and (not verify_checksums or artifact_.verify_checksum()):
         artifact_path = os.path.join(artifact_.parent_dir, artifact_.path)
         logging.debug(f"Artifact {artifact_path} exists")
         unpack_copy(artifact_, artifact_path)
@@ -84,15 +83,13 @@ def resolve_artifact(artifact_: Artifact, _attempt: int = 0) -> str or None:
                 artifact_io.flush()
                 os.fsync(artifact_io.fileno())
         else:
-            logging.error(f"Unable to download artifact: {response.status_code} - {response.text}")
+            logging.error(f"Unable to download artifact from {artifact_.url}: {response.status_code}-{response.text}")
     except Exception as e:
-        logging.error(f"Unable to download artifact: {e}")
+        logging.error(f"Unable to download artifact from {artifact_.url}: {e}")
         logging.debug("Error details", exc_info=e)
 
     # Check
-    if not artifact_.artifact_exists or (
-        artifact_.checksum_alg and artifact_.target_checksum != artifact_.calculate_actual_checksum()
-    ):
+    if not artifact_.artifact_exists or (verify_checksums and not artifact_.verify_checksum()):
         # Wait a bit and try again
         if _attempt < DOWNLOAD_ATTEMPTS:
             time.sleep(ATTEMPT_DELAY)

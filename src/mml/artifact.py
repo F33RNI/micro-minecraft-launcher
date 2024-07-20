@@ -23,6 +23,9 @@ from typing import Dict, List
 # For calculating checksum
 CHUNK_SIZE = 8192
 
+# Default artifact url if none is specified
+URL_DEFAULT = "https://libraries.minecraft.net/"
+
 
 class Artifact:
     def __init__(
@@ -65,20 +68,30 @@ class Artifact:
                 name = package_name_version[1]
                 version = package_name_version[2]
                 uri_from_name = f"{package}/{name}/{version}/{name}-{version}"
-                if (
-                    not uri_from_name.endswith(".jar")
-                    and not uri_from_name.endswith(".zip")
-                    and not uri_from_name.endswith(".dll")
-                    and not uri_from_name.endswith(".so")
-                ):
-                    uri_from_name += ".jar"
 
-                self._artifact["path"] = uri_from_name
+                # Split extension (just in case) i think this will never be useful and may be even wrong :)
+                ext = ".jar"
+                for ext_ in [".jar", ".zip", ".dll", ".so"]:
+                    if uri_from_name.endswith(ext_):
+                        ext = ext_
+                        uri_from_name = uri_from_name[: -len(ext_)]
+                        break
 
-                if "url" in self._artifact:
-                    if not self._artifact["url"].endswith("/"):
-                        self._artifact["url"] += "/"
-                    self._artifact["url"] += uri_from_name
+                # Set this as path
+                self._artifact["path"] = uri_from_name + ext
+
+                # VERY old format
+                if "url" not in self._artifact:
+                    self._artifact["url"] = URL_DEFAULT
+
+                # Fix for old forge versions
+                if package == "net/minecraftforge":
+                    uri_from_name += "-universal"
+
+                # Append to the url
+                if not self._artifact["url"].endswith("/"):
+                    self._artifact["url"] += "/"
+                self._artifact["url"] += uri_from_name + ext
 
     @property
     def parent_dir(self) -> str:
@@ -137,30 +150,6 @@ class Artifact:
         return self._artifact.get("size", 0)
 
     @property
-    def checksum_alg(self) -> str or None:
-        """Searches for checksum algorithm in artifact
-
-        Returns:
-            str or None: "sha1", "md5", "sha256", "sha512" or None if not found
-        """
-        for alg in ["sha1", "md5", "sha256", "sha512"]:
-            if alg in self._artifact:
-                return alg
-        return None
-
-    @property
-    def target_checksum(self) -> str or None:
-        """Value of checksum (value of checksum_alg)
-
-        Returns:
-            str or None: checksum or None if not found
-        """
-        alg = self.checksum_alg
-        if not alg:
-            return None
-        return self._artifact[alg]
-
-    @property
     def artifact_exists(self) -> bool:
         """Checks if target file exists
 
@@ -174,39 +163,61 @@ class Artifact:
             return False
         return True
 
-    def calculate_actual_checksum(self) -> str or None:
+    def verify_checksum(self) -> bool:
         """Calculate artifact's checksum
 
         Returns:
-            str or None: artifact's checksum (checksum_alg) or None if not exists
+            bool: if artifact doesn't have a checksum or it's checksum is valid or False if not
         """
         if not self.artifact_exists:
             logging.debug("Unable to calculate checksum. No artifact or it doesn't exist")
             return None
 
-        alg = self.checksum_alg
-        if not alg:
-            logging.debug("Unable to calculate checksum. Unknown algorithm")
-            return None
+        # [(alg, checksum), ...]
+        allowed_checksums = []
+        for alg in ["sha1", "md5", "sha256", "sha512"]:
+            if alg in self._artifact:
+                allowed_checksums.append((alg, self._artifact[alg]))
 
-        if alg == "sha1":
-            file_hash = hashlib.sha1(usedforsecurity=False)
-        elif alg == "md5":
-            file_hash = hashlib.md5(usedforsecurity=False)
-        elif alg == "sha256":
-            file_hash = hashlib.sha256(usedforsecurity=False)
-        elif alg == "sha512":
-            file_hash = hashlib.sha512(usedforsecurity=False)
-        else:
-            raise Exception("Unknown algorithm")
+        # Idk think we can face this but just in case
+        if "checksum" in self._artifact and isinstance(self._artifact["checksum"], str):
+            allowed_checksums.append(("sha1", self._artifact["checksum"]))
 
-        artifact_path = os.path.join(self._parent_dir, self._artifact["path"])
-        with open(artifact_path, "rb") as artifact_io:
-            chunk = artifact_io.read(CHUNK_SIZE)
-            while chunk:
-                file_hash.update(chunk)
+        # Very old format
+        if "checksums" in self._artifact:
+            if isinstance(self._artifact["checksums"], List):
+                for checksum in self._artifact["checksums"]:
+                    allowed_checksums.append(("sha1", checksum))
+
+        # Return True if no checksums available
+        if len(allowed_checksums) == 0:
+            logging.warning(f"No checksums for {self._artifact.get('name', str(self._artifact))} artifact")
+            return True
+
+        # Verify
+        for alg, checksum in allowed_checksums:
+            if alg == "sha1":
+                file_hash = hashlib.sha1(usedforsecurity=False)
+            elif alg == "md5":
+                file_hash = hashlib.md5(usedforsecurity=False)
+            elif alg == "sha256":
+                file_hash = hashlib.sha256(usedforsecurity=False)
+            elif alg == "sha512":
+                file_hash = hashlib.sha512(usedforsecurity=False)
+
+            artifact_path = os.path.join(self._parent_dir, self._artifact["path"])
+            with open(artifact_path, "rb") as artifact_io:
                 chunk = artifact_io.read(CHUNK_SIZE)
+                while chunk:
+                    file_hash.update(chunk)
+                    chunk = artifact_io.read(CHUNK_SIZE)
 
-        checksum = file_hash.hexdigest()
-        logging.debug(f"Calculated {alg} checksum: {checksum}")
-        return checksum
+            checksum_ = file_hash.hexdigest()
+            logging.debug(f"Calculated {alg} checksum: {checksum_}")
+
+            if checksum_.lower() == checksum.lower():
+                logging.debug("Checksum is valid")
+                return True
+
+        logging.warning(f"Wrong checksum of {self._artifact.get('name', str(self._artifact))} artifact")
+        return False

@@ -55,7 +55,11 @@ def update_deep(destination: Dict, update: Dict) -> Dict:
             if key not in destination:
                 destination[key] = value
             else:
-                destination[key].extend(value)
+                if key == "libraries":
+                    value.extend(destination[key])
+                    destination[key] = value
+                else:
+                    destination[key].extend(value)
         else:
             destination[key] = value
     return destination

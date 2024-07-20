@@ -263,6 +263,10 @@ class Launcher(Thread):
             if self._env_variables:
                 env_variables_.update(self._env_variables)
 
+            # Required by old versions
+            if "user_properties" not in env_variables_:
+                env_variables_["user_properties"] = "{}"
+
             # Add java args
             final_cmd = [self._java_path]
             final_cmd.extend(deps_builder_.get_arguments(False, self._features))
