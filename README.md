@@ -225,7 +225,7 @@ examples:
     "id": "fabric-loader-0.15.11-1.20.1",
     "jvm_args": [
         "-Xss1M",
-        "-Xmx4G",
+        "-Xmx6G",
         "-XX:+UnlockExperimentalVMOptions",
         "-XX:+UseG1GC",
         "-XX:G1NewSizePercent=20",
@@ -235,7 +235,8 @@ examples:
         "-Dfml.ignoreInvalidMinecraftCertificates=true",
         "-Dfml.ignorePatchDiscrepancies=true",
         "-Djava.net.preferIPv4Stack=true",
-        "-Dminecraft.applet.TargetDirectory=."
+        "-Dminecraft.applet.TargetDirectory=.",
+        "-Dorg.lwjgl.glfw.libname=./fix/libglfw.so"
     ],
     "game_args": [
         "--width",
@@ -250,6 +251,80 @@ examples:
         "fabric-installer-*",
         "hs_err_pid*.log"
     ]
+}
+```
+
+----------
+
+## 🛑 Known issues
+
+----------
+
+### Minecraft not using GPU
+
+#### Linux
+
+On linux, just run launcher with `prime-run` (ex.: `prime-run ./micro-minecraft-launcher-1.2.dev7-linux-x86_64`)
+
+#### Windows
+
+You need to manually specify what GPU launcher and java.exe should use
+
+> This tutorial is copied from <https://pureinfotech.com/set-gpu-app-windows-10/>
+> I don't have windows, so idk will it work or not
+
+1. Open Settings on Windows 10.
+2. Click on System.
+3. Click on Display.
+4. Under the "Multiple displays" section, click the Graphics settings option.
+5. Select the app type using the drop-down menu:
+  Classic app — traditional (Win32) desktop programs.
+6. Click the "Browse" button and locate the locally downloaded "java.exe" by launcher
+7. Use the drop-down menu and select the app.
+8. Click the Add button.
+9. Set GPU for app
+10. Click the Options button.
+11. App GPU options
+12. Set the graphics card preference to use for the app:
+  High performance — runs the app on the most capable GPU, usually an external or discrete graphics processor.
+  Click the Save button.
+
+----------
+
+### SIGSEGV (libglfw.so) or "stack smashing detected"
+
+The problem is related to the libglfw.so library on Linux, so you need to manually recompile it from source
+
+```shell
+# Select working dir (optionally)
+cd "$HOME/Downloads"
+
+# Clone repo
+git clone https://github.com/glfw/glfw.git && cd glfw
+
+# Build it
+# NOTE: Add -D GLFW_BUILD_WAYLAND=ON or -D GLFW_BUILD_X11=ON to enable Wayland/X11 support
+cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D GLFW_BUILD_EXAMPLES=OFF -D GLFW_BUILD_TESTS=OFF -D GLFW_BUILD_DOCS=OFF && cmake --build build
+
+# Copy shared libs
+mkdir -p "$HOME/.local/lib/glfw" && cp build/src/libglfw* "$HOME/.local/lib/glfw/"
+
+# Delete repo (optional)
+cd ..
+rm -rf glfw
+```
+
+Specify path to shared lib in `jvm_args` (in config) or using `--jvm-args` argument like so:
+
+```json
+{
+    "game_dir": ".",
+    "id": "fabric-loader-0.15.11-1.20.1",
+    "jvm_args": [
+        ...
+        "-Dorg.lwjgl.glfw.libname=/path/to/.local/lib/libglfw.so"
+    ],
+    ...
 }
 ```
 
