@@ -291,9 +291,13 @@ You need to manually specify what GPU launcher and java.exe should use
 
 ----------
 
-### SIGSEGV (libglfw.so) or "stack smashing detected"
+### SIGSEGV (libglfw.so) or "stack smashing detected" on Linux
 
 The problem is related to the libglfw.so library on Linux, so you need to manually recompile it from source
+
+----------
+
+#### X11 or XWayland
 
 ```shell
 # Select working dir (optionally)
@@ -303,8 +307,7 @@ cd "$HOME/Downloads"
 git clone https://github.com/glfw/glfw.git && cd glfw
 
 # Build it
-# NOTE: Add -D GLFW_BUILD_WAYLAND=ON or -D GLFW_BUILD_X11=ON to enable Wayland/X11 support
-cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D GLFW_BUILD_EXAMPLES=OFF -D GLFW_BUILD_TESTS=OFF -D GLFW_BUILD_DOCS=OFF && cmake --build build
+cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D GLFW_BUILD_EXAMPLES=OFF -D GLFW_BUILD_TESTS=OFF -D GLFW_BUILD_DOCS=OFF -D GLFW_BUILD_WAYLAND=ON -D GLFW_BUILD_X11=ON && cmake --build build
 
 # Copy shared libs
 mkdir -p "$HOME/.local/lib/glfw" && cp build/src/libglfw* "$HOME/.local/lib/glfw/"
@@ -314,6 +317,42 @@ cd ..
 rm -rf glfw
 ```
 
+----------
+
+#### Wayland
+
+```shell
+# Select working dir (optionally)
+cd "$HOME/Downloads"
+
+# Clone glfw-wayland from BoyOrigin
+git clone --recursive https://github.com/BoyOrigin/glfw-wayland.git && cd glfw-wayland
+
+# Or my fork (it's the same, just in case)
+# git clone --recursive https://github.com/F33RNI/glfw-wayland.git && cd glfw-wayland
+
+# Make sure you setup git in your system properly
+# If not, run this
+# git config --global user.name "You name"
+# git config --global user.email "You email"
+
+# In case of warning / error try to run this 2 times
+./applyPatches.sh
+
+# Build patched version without X11
+cd glfw-wayland
+cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D GLFW_BUILD_EXAMPLES=OFF -D GLFW_BUILD_TESTS=OFF -D GLFW_BUILD_DOCS=OFF -D GLFW_BUILD_WAYLAND=ON -D GLFW_BUILD_X11=OFF && cmake --build build
+
+# Copy shared libs
+mkdir -p "$HOME/.local/lib/glfw" && cp build/src/libglfw* "$HOME/.local/lib/glfw/"
+
+# Delete repo (optional)
+cd ../..
+rm -rf glfw-wayland
+```
+
+----------
+
 Specify path to shared lib in `jvm_args` (in config) or using `--jvm-args` argument like so:
 
 ```json
@@ -322,7 +361,7 @@ Specify path to shared lib in `jvm_args` (in config) or using `--jvm-args` argum
     "id": "fabric-loader-0.15.11-1.20.1",
     "jvm_args": [
         ...
-        "-Dorg.lwjgl.glfw.libname=/path/to/.local/lib/libglfw.so"
+        "-Dorg.lwjgl.glfw.libname=/path/to/.local/lib/glfw/libglfw.so"
     ],
     ...
 }
