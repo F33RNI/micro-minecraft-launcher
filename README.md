@@ -262,9 +262,12 @@ examples:
 
 ### Minecraft not using GPU
 
-#### Linux
+#### Linux (NVIDIA)
 
-On linux, just run launcher with `prime-run` (ex.: `prime-run ./micro-minecraft-launcher-1.2.dev7-linux-x86_64`)
+On linux, just run launcher with `DRI_PRIME=1` (for open-source drivers) or `prime-run` (for proprietary driver)
+
+- ex.: `DRI_PRIME=1 ./micro-minecraft-launcher-1.2.dev7-linux-x86_64`
+- ex.: `prime-run ./micro-minecraft-launcher-1.2.dev7-linux-x86_64`
 
 #### Windows
 
