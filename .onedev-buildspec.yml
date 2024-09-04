@@ -1,0 +1,80 @@
+version: 35
+jobs:
+  - name: Test
+    jobExecutor: Docker
+    steps:
+      - !CheckoutStep
+        name: checkout
+        cloneCredential: !DefaultCredential {}
+        withLfs: false
+        withSubmodules: false
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+      - !CommandStep
+        name: install dependencies
+        runInContainer: true
+        image: python:3.12.5
+        interpreter: !DefaultInterpreter
+          commands: |
+            python -m venv venv
+            venv/bin/python -m pip install -r requirements.txt
+            venv/bin/python -m pip install pyinstaller
+        useTTY: true
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+      - !CommandStep
+        name: build & run
+        runInContainer: true
+        image: python:3.12.5
+        interpreter: !DefaultInterpreter
+          commands: |
+            venv/bin/pyinstaller main.spec
+            mv `ls -d dist/micro-minecraft-launcher*` dist/micro-minecraft-launcher
+            dist/micro-minecraft-launcher --version
+        useTTY: true
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    triggers:
+      - !BranchUpdateTrigger {}
+    retryCondition: never
+    maxRetries: 3
+    retryDelay: 30
+    timeout: 3600
+  - name: Release
+    jobExecutor: Docker
+    steps:
+      - !CheckoutStep
+        name: checkout
+        cloneCredential: !DefaultCredential {}
+        withLfs: false
+        withSubmodules: false
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+      - !CommandStep
+        name: install dependencies
+        runInContainer: true
+        image: python:3.12.5
+        interpreter: !DefaultInterpreter
+          commands: |
+            python -m venv venv
+            venv/bin/python -m pip install -r requirements.txt
+            venv/bin/python -m pip install pyinstaller
+        useTTY: true
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+      - !CommandStep
+        name: build
+        runInContainer: true
+        image: python:3.12.5
+        interpreter: !DefaultInterpreter
+          commands: |
+            venv/bin/pyinstaller main.spec
+        useTTY: true
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+      - !PublishArtifactStep
+        name: publish artifact
+        artifacts: dist/*
+        condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    triggers:
+      - !TagCreateTrigger
+        branches: main
+        projects: micro-minecraft-launcher
+    retryCondition: never
+    maxRetries: 3
+    retryDelay: 30
+    timeout: 3600
