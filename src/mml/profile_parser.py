@@ -19,7 +19,6 @@ import collections.abc
 import json
 import logging
 import os
-from typing import Dict, List
 
 import requests
 from dateutil import parser
@@ -38,20 +37,20 @@ MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 TIMEOUT = 30
 
 
-def update_deep(destination: Dict, update: Dict) -> Dict:
+def update_deep(destination: dict, update: dict) -> dict:
     """Recursively updates values of dictionary
 
     Args:
-        destination (Dict): where update
-        update (Dict): data to overwrite "destination"
+        destination (dict): where update
+        update (dict): data to overwrite "destination"
 
     Returns:
-        Dict: "destination" with value overwritten by "update"
+        dict: "destination" with value overwritten by "update"
     """
     for key, value in update.items():
         if isinstance(value, collections.abc.Mapping):
             destination[key] = update_deep(destination.get(key, {}), value)
-        elif isinstance(value, List):
+        elif isinstance(value, list):
             if key not in destination:
                 destination[key] = value
             else:
@@ -93,18 +92,18 @@ class ProfileParser:
         return os.path.join(self._game_dir, VERSIONS_DIR)
 
     @property
-    def versions_info(self) -> List[Dict]:
+    def versions_info(self) -> list[dict]:
         """
         Returns:
-            List[Dict]: output from parse_versions()
+            list[dict]: output from parse_versions()
         """
         return self._versions
 
-    def parse_versions(self) -> List[Dict]:
+    def parse_versions(self) -> list[dict]:
         """Parses versions from mojang and from VERSIONS_DIR
 
         Returns:
-            List[Dict]: [{
+            list[dict]: [{
                 "id": "version_id",
                 "type": "release" / "snapshot" / "old_alpha" / "old_beta",
                 "releaseTime": "time in ISO 8601 format",
@@ -215,7 +214,7 @@ class ProfileParser:
 
         return self._versions
 
-    def parse_version_json(self, path_to_json: str) -> Dict or None:
+    def parse_version_json(self, path_to_json: str) -> dict | None:
         """Parses and recursively inherits version's JSON
         Call parse_versions() before
 
@@ -223,7 +222,7 @@ class ProfileParser:
             path_to_json (str): relative path to version's JSON from parse_versions()
 
         Returns:
-            Dict or None: parsed and inherited version's JSON or None if unable to find inherited JSON
+            dict or None: parsed and inherited version's JSON or None if unable to find inherited JSON
         """
         path_to_json = os.path.join(self.versions_dir, path_to_json)
         logging.debug(f"Parsing {path_to_json}")
@@ -251,7 +250,7 @@ class ProfileParser:
 
         return version_json
 
-    def version_path_by_id(self, version_id: str, download: bool) -> str or None:
+    def version_path_by_id(self, version_id: str, download: bool) -> str | None:
         """Returns path to JSON file relative to versions dir or downloads it from mojang based on version ID
         NOTE: Call parse_versions() before
 
@@ -260,7 +259,7 @@ class ProfileParser:
             download (bool): True to try to download version.json from Mojang if not found locally
 
         Returns:
-            str or None: path to JSON file relative to versions dir or None in case of error
+            str | None: path to JSON file relative to versions dir or None in case of error
         """
         version_info = None
         for version_info_ in self._versions:

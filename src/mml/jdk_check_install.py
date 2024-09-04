@@ -43,14 +43,14 @@ def classpath_separator() -> str:
         return ":"
 
 
-def jdk_check_install(version: int = 17) -> str or None:
+def jdk_check_install(version: int = 17) -> str | None:
     """Check if Java exists and installs it if not
 
     Args:
         version (int, optional): major version to download. Defaults to 17
 
     Returns:
-        str or None: java executable path or None in case of error
+        str | None: java executable path or None in case of error
     """
     # Target subdir
     jdk_path_abs = os.path.abspath(JDK_PATH)
@@ -92,7 +92,7 @@ def jdk_check_install(version: int = 17) -> str or None:
     return None
 
 
-def _parse_major_version(java_bin: str) -> int or None:
+def _parse_major_version(java_bin: str) -> int | None:
     """Parses major java version by running java -version
 
     Args:

@@ -19,6 +19,7 @@ import logging
 import multiprocessing
 import queue
 import time
+from multiprocessing.sharedctypes import SynchronizedBase
 
 from mml.logging_handler import worker_configurer
 from mml.resolve_artifact import resolve_artifact
@@ -30,9 +31,9 @@ LOOP_DELAY = 0.05
 def resolver_process(
     id_: int,
     queue_: multiprocessing.Queue,
-    stop_flag: multiprocessing.Value,
-    error_flag: multiprocessing.Value,
-    bytes_processed: multiprocessing.Value,
+    stop_flag: SynchronizedBase,
+    error_flag: SynchronizedBase,
+    bytes_processed: SynchronizedBase,
     logging_queue: multiprocessing.Queue,
 ) -> None:
     """Retrieves artifact instances from the queue and processes (download, copy, unpack) them

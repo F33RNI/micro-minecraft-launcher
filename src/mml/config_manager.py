@@ -71,13 +71,13 @@ class ConfigManager:
         else:
             logging.warning(f"File {config_file} doesn't exist")
 
-    def get(self, key: str, default_value: Any or None = None, ignore_args: bool = False) -> Any:
+    def get(self, key: str, default_value: Any | None = None, ignore_args: bool = False) -> Any:
         """Retrieves value from args or config by key
         Priority: args -> config -> CONFIG_DEFAULT -> default_value
 
         Args:
             key (str): config key to get value of
-            default_value (Any or None): value to return if key doesn't exists even in CONFIG_DEFAULT
+            default_value (Any | None): value to return if key doesn't exists even in CONFIG_DEFAULT
             ignore_args (bool or None, optional): True to ignore self._args_d
 
         Returns:

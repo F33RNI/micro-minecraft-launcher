@@ -26,7 +26,6 @@ import time
 from enum import IntEnum
 from functools import reduce
 from threading import Thread
-from typing import Dict, List
 
 from mml._version import LAUNCHER_VERSION
 from mml.deps_builder import DepsBuilder
@@ -70,16 +69,16 @@ class Launcher(Thread):
         file_resolver_: FileResolver,
         profile_parser_: ProfileParser,
         version_id: str,
-        env_variables: Dict or None = None,
-        features: Dict or None = None,
-        user_name: str or None = None,
-        auth_uuid: str or None = None,
-        auth_access_token: str or None = None,
-        user_type: str or None = None,
+        env_variables: dict | None = None,
+        features: dict | None = None,
+        user_name: str | None = None,
+        auth_uuid: str | None = None,
+        auth_access_token: str | None = None,
+        user_type: str | None = None,
         isolate_profile: bool = True,
-        java_path: str or None = None,
-        extra_jvm_args: List[str] or None = None,
-        extra_game_args: List[str] or None = None,
+        java_path: str | None = None,
+        extra_jvm_args: list[str] | None = None,
+        extra_game_args: list[str] | None = None,
     ) -> None:
         Thread.__init__(self)
         self._file_resolver = file_resolver_

@@ -38,7 +38,7 @@ DOWNLOAD_ATTEMPTS = 3
 ATTEMPT_DELAY = 1.0
 
 
-def resolve_artifact(artifact_: Artifact, _attempt: int = 0, verify_checksums: bool = True) -> str or None:
+def resolve_artifact(artifact_: Artifact, _attempt: int = 0, verify_checksums: bool = True) -> str | None:
     """Checks if artifact exists (and verifies it's checksum) and downloads it if not
     Also, copies and unpacks it if needed
 
@@ -47,7 +47,7 @@ def resolve_artifact(artifact_: Artifact, _attempt: int = 0, verify_checksums: b
         verify_checksums (bool, optional): False to ignore checksum mismatch. Defaults to True
 
     Returns:
-        str or None: path to artifact if exists or downloaded successfully or None in case of error
+        str | None: path to artifact if exists or downloaded successfully or None in case of error
     """
     if artifact_.artifact_exists and (not verify_checksums or artifact_.verify_checksum()):
         artifact_path = os.path.join(artifact_.parent_dir, artifact_.path)

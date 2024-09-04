@@ -28,12 +28,12 @@ FORMATTER_FMT_SUFFIX = "[%(asctime)s] [%(levelname)-.1s] [{suffix}] %(message)s"
 FORMATTER_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
-def worker_configurer(queue_: multiprocessing.Queue, suffix: str or None = None):
+def worker_configurer(queue_: multiprocessing.Queue, suffix: str | None = None):
     """Call this method in your process
 
     Args:
         queue (multiprocessing.Queue): logging queue
-        suffix (str or None, optional): suffix for formatter for current process. Defaults to None
+        suffix (str | None, optional): suffix for formatter for current process. Defaults to None
     """
     # Remove all current handlers
     root_logger = logging.getLogger()

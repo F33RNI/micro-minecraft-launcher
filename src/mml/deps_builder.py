@@ -18,7 +18,7 @@ If not, see <http://www.gnu.org/licenses/>.
 import json
 import logging
 import os
-from typing import Callable, Dict, List, Tuple
+from typing import Callable
 
 from mml.artifact import Artifact
 from mml.jdk_check_install import jdk_check_install
@@ -64,7 +64,7 @@ class DepsBuilder:
         game_dir: str,
         version_dir: str,
         version_id: str,
-        version_json: Dict,
+        version_json: dict,
     ):
         self._add_artifact = add_artifact
         self._game_dir = game_dir
@@ -104,19 +104,19 @@ class DepsBuilder:
         """
         return os.path.join(self._game_dir, ASSET_LEGACY_DIR)
 
-    def get_java(self) -> str or None:
+    def get_java(self) -> str | None:
         """Tries to download (if needed) correct version of Java for version
 
         Returns:
-            str or None: path to java executable or None if case or error
+            str | None: path to java executable or None if case or error
         """
         return jdk_check_install(self._version_json.get("javaVersion", {}).get("majorVersion", 8))
 
-    def get_client(self) -> str or None:
+    def get_client(self) -> str | None:
         """Tries to download (if needed) client (version.jar)
 
         Returns:
-            str or None: path to client or None if case or error
+            str | None: path to client or None if case or error
         """
         client_path = os.path.join(self._version_dir, self._version_id, self._version_id + ".jar")
         logging.debug(f"Client path: {client_path}")
@@ -137,11 +137,11 @@ class DepsBuilder:
             return client_path
         return None
 
-    def get_assets(self) -> str or None:
+    def get_assets(self) -> str | None:
         """Downloads all assets
 
         Returns:
-            str or None: asset index if they're downloaded successfully or None in case of error
+            str | None: asset index if they're downloaded successfully or None in case of error
         """
         if "assets" not in self._version_json:
             logging.warning("No assets specified")
@@ -199,11 +199,11 @@ class DepsBuilder:
         # Seems Ok
         return assets_id
 
-    def get_libraries(self) -> List[str] or None:
+    def get_libraries(self) -> list[str] | None:
         """Build and downloads list of all libraries including native ones
 
         Returns:
-            List[str] or None: ["path/to/lib/relative/to/libraries/dir", ...] or None in case of error
+            list[str] | None: ["path/to/lib/relative/to/libraries/dir", ...] or None in case of error
         """
         if "libraries" not in self._version_json:
             logging.warning("No libraries specified")
@@ -257,11 +257,11 @@ class DepsBuilder:
 
         return libs
 
-    def get_log_config(self) -> Tuple[str or None, str or None]:
+    def get_log_config(self) -> tuple[str | None, str | None]:
         """Downloads log config if needed and extracts argument if exists
 
         Returns:
-           Tuple[str or None, str or None]: path to log config file, logging (JVM) argument
+           tuple[str | None, str | None]: path to log config file, logging (JVM) argument
         """
         logging_client = self._version_json.get("logging", {}).get("client", {})
         if not logging_client or "argument" not in logging_client or "file" not in logging_client:
@@ -278,15 +278,15 @@ class DepsBuilder:
 
         return log_config_path, logging_client["argument"].replace("${path}", log_config_path)
 
-    def get_arguments(self, game: bool, features: Dict or None) -> List[str]:
+    def get_arguments(self, game: bool, features: dict | None) -> list[str]:
         """Parses game and jvm arguments
 
         Args:
             game (bool): True to parse game (or minecraftArguments)
-            features (Dict or None): see rules_check() docs
+            features (dict | None): see rules_check() docs
 
         Returns:
-            List[str]: parsed arguments
+            list[str]: parsed arguments
         """
         args = self._version_json.get("arguments", {})
 
@@ -313,7 +313,7 @@ class DepsBuilder:
         # Apply rules
         args_parsed = []
         for arg in args:
-            if isinstance(arg, Dict):
+            if isinstance(arg, dict):
                 if "value" not in arg and "values" not in arg:
                     logging.debug(f"Ignoring argument {arg}. No value/values specified")
                     continue
@@ -324,7 +324,7 @@ class DepsBuilder:
 
                 # Value can be list or single string
                 values = arg.get("value", arg.get("values"))
-                if isinstance(values, List):
+                if isinstance(values, list):
                     for value_ in values:
                         args_parsed.append(value_)
                 else:

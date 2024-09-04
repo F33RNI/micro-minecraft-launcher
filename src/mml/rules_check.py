@@ -19,7 +19,6 @@ import logging
 import platform
 import re
 import sys
-from typing import Dict, List
 
 
 def os_name() -> str:
@@ -40,7 +39,7 @@ def os_name() -> str:
         raise Exception(f"Unsupported OS: {sys.platform}")
 
 
-def rules_check(rules: List[Dict], features: Dict or None = None) -> bool:
+def rules_check(rules: list[dict], features: dict | None = None) -> bool:
     """Tests rules (for accepting arguments or libs)
     <https://minecraft.fandom.com/wiki/Client.json>
 
@@ -56,7 +55,7 @@ def rules_check(rules: List[Dict], features: Dict or None = None) -> bool:
                 }
             }
         ]
-        features (Dict or None, optional): {
+        features (Dict | None, optional): {
             "is_demo_user": value,
             "has_custom_resolution": value
             "has_quick_plays_support": value,

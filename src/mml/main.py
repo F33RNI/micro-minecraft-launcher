@@ -26,7 +26,6 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Dict, List
 from uuid import uuid4
 
 import certifi
@@ -232,11 +231,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_versions(versions: List[Dict]) -> None:
+def print_versions(versions: list[dict]) -> None:
     """Prints local and Mojang versions to console
 
     Args:
-        versions (List[Dict]): result of ProfileParser.parse_versions()
+        versions (list[dict]): result of ProfileParser.parse_versions()
     """
     versions_log = []
     for version in versions:
@@ -244,11 +243,11 @@ def print_versions(versions: List[Dict]) -> None:
     logging.info(f"Available versions (* - local): {', '.join(versions_log)}")
 
 
-def username_dialog() -> str or None:
+def username_dialog() -> str | None:
     """Asks user for username
 
     Returns:
-        str or None: username or None if not provided
+        str | None: username or None if not provided
     """
     # Sleep a bit to make sure logs are flushed
     time.sleep(0.1)
@@ -264,16 +263,16 @@ def username_dialog() -> str or None:
     return username
 
 
-def key_value_pairs_to_dict(key_values: List[str] or None, separator: str = "=") -> Dict:
+def key_value_pairs_to_dict(key_values: list[str] | None, separator: str = "=") -> dict:
     """Converts key-value pairs (from arguments) into dictionary
 
     Args:
-        key_values (List[str] or None): ex.: ["version_type=snapshot", "launcher_name=custom-launcher"]
+        key_values (list[str] | None): ex.: ["version_type=snapshot", "launcher_name=custom-launcher"]
         separator (str, optional): key and value(s) separator. Defaults to "="
         NOTE: Values are always treated as strings
 
     Returns:
-        Dict: ex.: {"version_type": "snapshot", "launcher_name": "custom-launcher"}
+        dict: ex.: {"version_type": "snapshot", "launcher_name": "custom-launcher"}
     """
     result = {}
     if key_values:
@@ -314,12 +313,12 @@ def check_mml_version() -> None:
         logging.debug("Error details", exc_info=e)
 
 
-def write_profiles(game_dir: str, versions: List[Dict]) -> None:
+def write_profiles(game_dir: str, versions: list[dict]) -> None:
     """Writes local version into LAUNCHER_PROFILES_FILE
 
     Args:
         game_dir (str): path to .minecraft
-        versions (List[Dict]): result of ProfileParser.parse_versions()
+        versions (list[dict]): result of ProfileParser.parse_versions()
     """
     launcher_profiles_file_path = os.path.join(game_dir, LAUNCHER_PROFILES_FILE)
     launcher_profiles = {}
@@ -412,11 +411,11 @@ def run_before(command: str, cwd: str) -> bool:
     return True
 
 
-def delete_files(delete_patterns: List[str]) -> None:
+def delete_files(delete_patterns: list[str]) -> None:
     """Deletes files using glob patterns
 
     Args:
-        delete_patterns (List[str]): patterns for glob.glob
+        delete_patterns (list[str]): patterns for glob.glob
     """
     logging.debug(f"delete_patterns: {' '.join(delete_patterns)}")
     for delete_pattern in delete_patterns:

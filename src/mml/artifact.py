@@ -18,7 +18,6 @@ If not, see <http://www.gnu.org/licenses/>.
 import hashlib
 import logging
 import os
-from typing import Dict, List
 
 # For calculating checksum
 CHUNK_SIZE = 8192
@@ -30,22 +29,22 @@ URL_DEFAULT = "https://libraries.minecraft.net/"
 class Artifact:
     def __init__(
         self,
-        artifact: Dict,
+        artifact: dict,
         parent_dir: str,
-        target_file: str or None = None,
-        unpack_into: str or None = None,
-        exclude_files: List[str] or None = None,
-        copy_to: str or None = None,
+        target_file: str | None = None,
+        unpack_into: str | None = None,
+        exclude_files: list[str] | None = None,
+        copy_to: str | None = None,
     ):
         """Initializes Artifact instance. This class in a wrapper and container for artifact from JSON
 
         Args:
-            artifact (Dict): artifact's JSON as dictionary
+            artifact (dict): artifact's JSON as dictionary
             parent_dir (str): artifact's parent dir
-            target_file (str or None): path to artifact file (relative to parent_dir) to overwrite artifact["path"]
-            unpack_into (str or None, optional): path to unpack file after downloading it. Defaults to None
-            exclude_files (List[str] or None, optional): list of files to exclude while unpacking. Defaults to None
-            copy_to (str or None): copy downloaded file to another file
+            target_file (str | None): path to artifact file (relative to parent_dir) to overwrite artifact["path"]
+            unpack_into (str | None, optional): path to unpack file after downloading it. Defaults to None
+            exclude_files (list[str] | None, optional): list of files to exclude while unpacking. Defaults to None
+            copy_to (str | None): copy downloaded file to another file
         """
         self._artifact = artifact.copy()
         self._parent_dir = parent_dir
@@ -102,42 +101,42 @@ class Artifact:
         return self._parent_dir
 
     @property
-    def unpack_into(self) -> str or None:
+    def unpack_into(self) -> str | None:
         """
         Returns:
-            str or None: path to unpack file after downloading it or None if not specified
+            str | None: path to unpack file after downloading it or None if not specified
         """
         return self._unpack_into
 
     @property
-    def exclude_files(self) -> List[str] or None:
+    def exclude_files(self) -> list[str] | None:
         """
         Returns:
-            List[str] or None: list of files to exclude while unpacking or None if not specified
+            list[str] | None: list of files to exclude while unpacking or None if not specified
         """
         return self._exclude_files
 
     @property
-    def copy_to(self) -> str or None:
+    def copy_to(self) -> str | None:
         """
         Returns:
-            str or None: copy downloaded file to another file
+            str | None: copy downloaded file to another file
         """
         return self._copy_to
 
     @property
-    def path(self) -> str or None:
+    def path(self) -> str | None:
         """
         Returns:
-            str or None: artifact["path"] or target_file or None if none of them defined
+            str | None: artifact["path"] or target_file or None if none of them defined
         """
         return self._artifact.get("path")
 
     @property
-    def url(self) -> str or None:
+    def url(self) -> str | None:
         """
         Returns:
-            str or None: artifact["url"] or None if no URL
+            str | None: artifact["url"] or None if no URL
         """
         return self._artifact.get("url")
 
@@ -167,11 +166,11 @@ class Artifact:
         """Calculate artifact's checksum
 
         Returns:
-            bool: if artifact doesn't have a checksum or it's checksum is valid or False if not
+            bool: True if artifact doesn't have a checksum or it's checksum is valid or False if not
         """
         if not self.artifact_exists:
             logging.debug("Unable to calculate checksum. No artifact or it doesn't exist")
-            return None
+            return True
 
         # [(alg, checksum), ...]
         allowed_checksums = []
@@ -185,7 +184,7 @@ class Artifact:
 
         # Very old format
         if "checksums" in self._artifact:
-            if isinstance(self._artifact["checksums"], List):
+            if isinstance(self._artifact["checksums"], list):
                 for checksum in self._artifact["checksums"]:
                     allowed_checksums.append(("sha1", checksum))
 
@@ -204,6 +203,9 @@ class Artifact:
                 file_hash = hashlib.sha256(usedforsecurity=False)
             elif alg == "sha512":
                 file_hash = hashlib.sha512(usedforsecurity=False)
+            else:
+                logging.error(f"Unknown checksum algorithm: {alg}")
+                return False
 
             artifact_path = os.path.join(self._parent_dir, self._artifact["path"])
             with open(artifact_path, "rb") as artifact_io:
