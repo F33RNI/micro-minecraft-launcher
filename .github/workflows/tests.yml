@@ -20,6 +20,6 @@ jobs:
         python-version: '3.12'
     - run: pip install -r requirements.txt
     - run: pip install pyinstaller
-    - run: pyinstaller main.spec
+    - run: pyinstaller micro-minecraft-launcher.spec
     - run: mv `ls -d dist/micro-minecraft-launcher*` dist/micro-minecraft-launcher
     - run: dist/micro-minecraft-launcher --version

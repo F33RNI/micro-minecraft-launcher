@@ -423,7 +423,7 @@ python -m mml --verbose
 
 ```shell
 pip install pyinstaller
-pyinstaller main.spec
+pyinstaller micro-minecraft-launcher.spec
 ```
 
 > Executable will be inside dist/ directory

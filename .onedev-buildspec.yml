@@ -26,7 +26,7 @@ jobs:
         image: python:3.12.5
         interpreter: !DefaultInterpreter
           commands: |
-            venv/bin/pyinstaller main.spec
+            venv/bin/pyinstaller micro-minecraft-launcher.spec
             mv `ls -d dist/micro-minecraft-launcher*` dist/micro-minecraft-launcher
             dist/micro-minecraft-launcher --version
         useTTY: true
@@ -63,7 +63,7 @@ jobs:
         image: python:3.12.5
         interpreter: !DefaultInterpreter
           commands: |
-            venv/bin/pyinstaller main.spec
+            venv/bin/pyinstaller micro-minecraft-launcher.spec
         useTTY: true
         condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
       - !PublishArtifactStep

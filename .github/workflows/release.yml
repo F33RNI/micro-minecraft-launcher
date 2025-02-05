@@ -27,7 +27,7 @@ jobs:
         python-version: '3.12'
     - run: pip install --upgrade -r requirements.txt
     - run: pip install pyinstaller
-    - run: pyinstaller main.spec
+    - run: pyinstaller micro-minecraft-launcher.spec
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
