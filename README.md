@@ -374,42 +374,59 @@ Specify path to shared lib in `jvm_args` (in config) or using `--jvm-args` argum
 
 ## 🏗️ Build from Source
 
-- Install Python (tested on **3.11** and **3.12**)
-- Clone repo
+### 1. Install Python (tested on `3.11` and `3.12`)
 
-    ```shell
-    git clone https://github.com/F33RNI/micro-minecraft-launcher
-    cd micro-minecraft-launcher
-    ```
+### 2. Clone repo
 
-- Create virtual environment and install dependencies
+```shell
+git clone https://github.com/F33RNI/micro-minecraft-launcher.git
+cd micro-minecraft-launcher
+```
 
-    ```shell
-    python -m venv venv
+### 3. Create virtual environment and install dependencies
 
-    # For Linux
-    source venv/bin/activate
+```shell
+python -m venv venv
 
-    # For Windows
-    venv\Scripts\activate.bat
+# For Linux
+source venv/bin/activate
 
-    pip install -r requirements.txt --upgrade
-    ```
+# For Windows
+venv\Scripts\activate.bat
 
-- **Launch** micro-minecraft-launcher
+pip install -r requirements.txt --upgrade
+```
 
-    ```shell
-    python main.py --verbose
-    ```
+### 4. **Launch** micro-minecraft-launcher as module
 
-- **Build** using PyInstaller
+#### 4.1. Temporarily add path to module to `PYTHONPATH` env variable
 
-    ```shell
-    pip install pyinstaller
-    pyinstaller main.spec
+- Linux
 
-    # Executable will be inside dist/ directory
-    ```
+  ```shell
+  export PYTHONPATH=./src:$PYTHONPATH
+  ```
+
+- Windows
+
+  ```shell
+  set PYTHONPATH=.\src;%PYTHONPATH%
+  ```
+
+#### 4.2. Launch as module
+
+```shell
+python -m mml --verbose
+```
+
+### 5. **Build** using PyInstaller
+
+```shell
+pip install pyinstaller
+pyinstaller main.spec
+```
+
+> Executable will be inside dist/ directory
 
 ----------
 
