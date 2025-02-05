@@ -34,14 +34,12 @@ with open(os.path.join("src", "mml", "_version.py"), "r", encoding="utf-8") as f
 # Final name
 COMPILE_NAME = f"micro-minecraft-launcher-{version}-{platform.system()}-{platform.machine()}".lower()
 
-SOURCE_FILES = glob.glob(os.path.join("src", "mml", "*.py"))
+SOURCE_FILES = [os.path.join("src", "mml", "__main__.py")]
 INCLUDE_FILES = [("LICENSE", ".")]
 ICON = None  # [os.path.join("icons", "icon.ico")]
 
 # Fix SSL: CERTIFICATE_VERIFY_FAILED
 INCLUDE_FILES.extend(collect_data_files("certifi"))
-
-block_cipher = None
 
 a = Analysis(
     SOURCE_FILES,
@@ -52,14 +50,14 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["_bootlocale"],
+    excludes=["_bootlocale", "__pycache__"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
+    optimize=0,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data)
 
 exe = EXE(
     pyz,
