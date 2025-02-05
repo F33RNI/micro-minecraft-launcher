@@ -4,7 +4,7 @@
 This file is part of the micro-minecraft-launcher distribution.
 See <https://github.com/F33RNI/micro-minecraft-launcher> for more info.
 
-Copyright (C) 2024 Fern Lane
+Copyright (C) 2024-2025 Fern Lane
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU General Public License as published by the Free Software Foundation, version 3.
