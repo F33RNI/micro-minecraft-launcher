@@ -37,9 +37,38 @@ MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 TIMEOUT = 30
 
 
+def _library_parse_name_version(name: str) -> tuple[str, str]:
+    """Crude way to parse library name and it's version
+    Ex. org.lwjgl:lwjgl-jemalloc:3.3.3:natives-linux -> (org.lwjgl:lwjgl-jemalloc:natives-linux, 3.3.3)
+    Ex. org.ow2.asm:asm:9.7.1 -> (org.ow2.asm:asm, 9.7.1)
+
+    Args:
+        name (str): library name
+
+    Returns:
+        tuple[str, str]: (full name (including natives), version)
+    """
+    # TODO: Improve this
+
+    name_parts = name.split(":")
+    if len(name_parts) < 2:
+        return name, ""
+
+    version = name_parts[-1]
+    if "." not in version:
+        version = name_parts[-2]
+
+    name_full = []
+    for name_part in name_parts:
+        if name_part != version:
+            name_full.append(name_part)
+
+    return ":".join(name_full).strip().strip(".").strip(":").replace("::", ":").replace("..", "."), version
+
+
 def _merge_libraries(source: list[dict], target: list[dict]) -> None:
     """Merges libraries considering their name
-    (Will overwrite libraries in "to" with libraries in "from" if their name matches ignoring lib version)
+    (Will overwrite libraries in "to" with libraries in "from" if their name matches but versions not)
 
     Args:
         source (list[dict]): from
@@ -50,9 +79,7 @@ def _merge_libraries(source: list[dict], target: list[dict]) -> None:
             target.append(src_lib)
             continue
 
-        # Parse library without it's version from name
-        src_lib_name = ":".join(src_lib["name"].split(":")[:-1]).strip()
-        # src_lib_version = src_lib["name"].split(":")[-1].strip()
+        src_lib_name, src_lib_version = _library_parse_name_version(src_lib["name"])
 
         # Try to find library with the same name in target and remove it if exists
         for dst_lib in target:
@@ -63,10 +90,13 @@ def _merge_libraries(source: list[dict], target: list[dict]) -> None:
             if dst_lib_name != src_lib_name:
                 continue
 
-            target.remove(dst_lib)
-            break
+            dst_lib_name, dst_lib_version = _library_parse_name_version(dst_lib["name"])
 
-        logging.debug(f"Overwriting library {src_lib_name}")
+            if dst_lib_version != src_lib_version:
+                logging.debug(f"Overwriting library {src_lib_name} {dst_lib_version} -> {src_lib_version}")
+                target.remove(dst_lib)
+                break
+
         target.append(src_lib)
 
 
