@@ -37,6 +37,39 @@ MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 TIMEOUT = 30
 
 
+def _merge_libraries(source: list[dict], target: list[dict]) -> None:
+    """Merges libraries considering their name
+    (Will overwrite libraries in "to" with libraries in "from" if their name matches ignoring lib version)
+
+    Args:
+        source (list[dict]): from
+        target (list[dict]): to
+    """
+    for src_lib in source:
+        if "name" not in src_lib or ":" not in src_lib["name"]:
+            target.append(src_lib)
+            continue
+
+        # Parse library without it's version from name
+        src_lib_name = ":".join(src_lib["name"].split(":")[:-1]).strip()
+        # src_lib_version = src_lib["name"].split(":")[-1].strip()
+
+        # Try to find library with the same name in target and remove it if exists
+        for dst_lib in target:
+            if "name" not in dst_lib or ":" not in dst_lib["name"]:
+                continue
+
+            dst_lib_name = ":".join(dst_lib["name"].split(":")[:-1]).strip()
+            if dst_lib_name != src_lib_name:
+                continue
+
+            target.remove(dst_lib)
+            break
+
+        logging.debug(f"Overwriting library {src_lib_name}")
+        target.append(src_lib)
+
+
 def update_deep(destination: dict, update: dict) -> dict:
     """Recursively updates values of dictionary
 
@@ -55,8 +88,14 @@ def update_deep(destination: dict, update: dict) -> dict:
                 destination[key] = value
             else:
                 if key == "libraries":
-                    value.extend(destination[key])
-                    destination[key] = value
+                    libraries = []
+                    _merge_libraries(destination[key], libraries)
+                    _merge_libraries(value, libraries)
+                    destination[key] = libraries
+
+                    # 1.3.rc0
+                    # value.extend(destination[key])
+                    # destination[key] = value
                 else:
                     destination[key].extend(value)
         else:
