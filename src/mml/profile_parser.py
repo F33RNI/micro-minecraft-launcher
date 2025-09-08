@@ -278,9 +278,19 @@ class ProfileParser:
             logging.error(f"Unable to fetch versions: {e}")
             logging.debug("Error details", exc_info=e)
 
-        # Sort by release time
-        self._versions = sorted(self._versions, key=lambda d: parser.parse(d["releaseTime"]), reverse=True)
-
+        # Sort by release time (TODO: properly handle timezones)
+        try:
+            self._versions = sorted(
+                self._versions,
+                key=lambda d: parser.parse(d["releaseTime"]),
+                reverse=True,
+            )
+        except TypeError:
+            self._versions = sorted(
+                self._versions,
+                key=lambda d: parser.parse(d["releaseTime"], ignoretz=True),
+                reverse=True,
+            )
         return self._versions
 
     def parse_version_json(self, path_to_json: str) -> dict | None:
