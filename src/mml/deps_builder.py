@@ -213,7 +213,7 @@ class DepsBuilder:
         natives_dir = self.natives_dir
         os_name_ = os_name()
 
-        libs = []
+        libs: list[str] = []
         for library in self._version_json["libraries"]:
             if "name" not in library:
                 continue
@@ -236,8 +236,15 @@ class DepsBuilder:
             # Add main artifact to the final list and download queue
             if artifact_dict:
                 artifact_ = Artifact(artifact_dict, parent_dir=libs_dir)
-                self._add_artifact(artifact_)
-                libs.append(artifact_.path)
+                has_path = False
+                for lib_ in libs:
+                    if lib_ == artifact_.path:
+                        logging.debug(f"Skipping {artifact_.path}. Already exists")
+                        has_path = True
+                        break
+                if not has_path:
+                    self._add_artifact(artifact_)
+                    libs.append(artifact_.path)
             else:
                 logging.debug("Skipping main artifact. Only natives required?")
 
